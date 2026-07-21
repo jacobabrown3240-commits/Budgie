@@ -1,5 +1,8 @@
-/* Budgie service worker — offline-first cache of the app shell. */
-var CACHE = "budgie-v1";
+/* Budgie service worker.
+   Network-first: when online, always serve the freshest files (so deploys
+   show up without a hard refresh) and keep the cache updated as a fallback;
+   when offline, serve the last-cached copy. */
+var CACHE = "budgie-v2";
 var ASSETS = [
   ".",
   "index.html",
@@ -28,17 +31,19 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    caches.match(e.request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function (res) {
-        // Runtime-cache same-origin GETs so the shell stays fresh.
+    fetch(e.request).then(function (res) {
+      // Refresh the cache with the latest successful same-origin response.
+      if (res && res.ok) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) {
           try { c.put(e.request, copy); } catch (err) {}
         });
-        return res;
-      }).catch(function () {
-        return caches.match("index.html");
+      }
+      return res;
+    }).catch(function () {
+      // Offline: fall back to cache, then to the app shell for navigations.
+      return caches.match(e.request).then(function (cached) {
+        return cached || caches.match("index.html");
       });
     })
   );
