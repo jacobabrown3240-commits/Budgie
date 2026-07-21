@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#256abf" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Plan your monthly budget, log what actually happened, and see the difference." />
+  <title>Budgie</title>
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Budgie" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="topbar-row">
+        <button class="month-nav" id="prevMonth" aria-label="Previous month">&#8249;</button>
+        <button class="month-label" id="monthLabel" aria-haspopup="dialog">
+          <span id="monthText">Month</span>
+          <span class="month-caret">&#9662;</span>
+        </button>
+        <button class="month-nav" id="nextMonth" aria-label="Next month">&#8250;</button>
+        <button class="menu-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
+      </div>
+    </header>
+
+    <!-- Views -->
+    <main class="content" id="content">
+      <!-- PLAN -->
+      <section class="view" id="view-plan">
+        <div class="summary-strip" id="planSummary"></div>
+        <div class="card" id="planChartCard">
+          <div class="card-head">
+            <h2>Where the money goes</h2>
+            <span class="card-sub" id="planChartSub"></span>
+          </div>
+          <div id="planChart" class="chart"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Income</h2><span class="card-sub" id="planIncomeTotal"></span></div>
+          <div class="list" id="planIncomeList"></div>
+          <button class="add-row" data-add="income">+ Add income source</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Expenses</h2><span class="card-sub" id="planExpenseTotal"></span></div>
+          <div class="list" id="planExpenseList"></div>
+          <button class="add-row" data-add="expense">+ Add expense category</button>
+        </div>
+      </section>
+
+      <!-- ACTUAL -->
+      <section class="view" id="view-actual" hidden>
+        <div class="summary-strip" id="actualSummary"></div>
+        <p class="hint">Enter what actually came in and went out this month.</p>
+        <div class="card">
+          <div class="card-head"><h2>Income</h2><span class="card-sub" id="actualIncomeTotal"></span></div>
+          <div class="list" id="actualIncomeList"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Expenses</h2><span class="card-sub" id="actualExpenseTotal"></span></div>
+          <div class="list" id="actualExpenseList"></div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" id="view-history" hidden>
+        <div class="summary-strip" id="historySummary"></div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Net savings trend</h2>
+            <span class="card-sub" id="historyTrendSub"></span>
+          </div>
+          <div id="historyChart" class="chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Month by month</h2></div>
+          <div id="historyList" class="hist-list"></div>
+        </div>
+        <p class="privacy">&#128274; Your history is stored only on this device &mdash; nothing is uploaded anywhere.</p>
+      </section>
+
+      <!-- COMPARE -->
+      <section class="view" id="view-compare" hidden>
+        <div class="summary-strip" id="compareSummary"></div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Planned vs actual</h2>
+            <div class="legend" id="compareLegend"></div>
+          </div>
+          <div id="compareChart" class="chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Category breakdown</h2></div>
+          <div id="compareTable" class="cmp-table"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="tabbar" id="tabbar">
+      <button class="tab is-active" data-view="plan">
+        <span class="tab-ico">&#9635;</span><span>Plan</span>
+      </button>
+      <button class="tab" data-view="actual">
+        <span class="tab-ico">&#10003;</span><span>Actual</span>
+      </button>
+      <button class="tab" data-view="compare">
+        <span class="tab-ico">&#8646;</span><span>Compare</span>
+      </button>
+      <button class="tab" data-view="history">
+        <span class="tab-ico">&#8635;</span><span>History</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Menu sheet -->
+  <div class="sheet-backdrop" id="menuSheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Menu">
+      <div class="sheet-handle"></div>
+      <button class="sheet-item" data-action="copyPrev">Copy plan from previous month</button>
+      <button class="sheet-item" data-action="export">Export backup (.json)</button>
+      <button class="sheet-item" data-action="import">Import backup (.json)</button>
+      <button class="sheet-item danger" data-action="clearMonth">Clear this month</button>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+  <input type="file" id="importFile" accept="application/json" hidden />
+
+  <!-- Icon picker sheet -->
+  <div class="sheet-backdrop" id="iconSheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Choose an icon">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Choose an icon</div>
+      <div class="icon-grid" id="iconGrid"></div>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
