@@ -1,7 +1,11 @@
-# Budgie
+# Kakeibo
 
-A phone-first budgeting app. Plan your monthly budget, log what actually
-happened at month's end, and see the two side by side.
+A phone-first budgeting app, named after the traditional Japanese household
+budgeting ledger (家計簿). Plan your monthly budget, log what actually happened
+at month's end, and see the two side by side.
+
+> The app is **Kakeibo**; the repository and its GitHub Pages URL remain under
+> `Budgie` (`…github.io/Budgie/`), so existing links keep working.
 
 It's a small, self-contained web app (no build step, no server, no account).
 All data is stored **locally on your device** in the browser. You can add it to
