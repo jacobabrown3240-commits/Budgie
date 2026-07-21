@@ -72,6 +72,23 @@
         </div>
       </section>
 
+      <!-- HISTORY -->
+      <section class="view" id="view-history" hidden>
+        <div class="summary-strip" id="historySummary"></div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Net savings trend</h2>
+            <span class="card-sub" id="historyTrendSub"></span>
+          </div>
+          <div id="historyChart" class="chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Month by month</h2></div>
+          <div id="historyList" class="hist-list"></div>
+        </div>
+        <p class="privacy">&#128274; Your history is stored only on this device &mdash; nothing is uploaded anywhere.</p>
+      </section>
+
       <!-- COMPARE -->
       <section class="view" id="view-compare" hidden>
         <div class="summary-strip" id="compareSummary"></div>
@@ -100,6 +117,9 @@
       <button class="tab" data-view="compare">
         <span class="tab-ico">&#8646;</span><span>Compare</span>
       </button>
+      <button class="tab" data-view="history">
+        <span class="tab-ico">&#8635;</span><span>History</span>
+      </button>
     </nav>
   </div>
 
@@ -115,6 +135,16 @@
     </div>
   </div>
   <input type="file" id="importFile" accept="application/json" hidden />
+
+  <!-- Icon picker sheet -->
+  <div class="sheet-backdrop" id="iconSheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Choose an icon">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Choose an icon</div>
+      <div class="icon-grid" id="iconGrid"></div>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

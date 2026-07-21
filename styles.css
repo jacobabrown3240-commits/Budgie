@@ -191,6 +191,23 @@ h1, h2 { margin: 0; }
 }
 .add-row:active { background: var(--surface-2); }
 
+/* ---------- Icon badges & chips ---------- */
+.ico-badge {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px;
+  border: none; font-size: 17px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bc) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bc) 38%, transparent);
+}
+.ico-badge:active { transform: scale(0.92); }
+.ico-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 6px; font-size: 13px; flex: 0 0 auto;
+  background: color-mix(in srgb, var(--bc) 16%, transparent);
+}
+.leg-ico { font-size: 14px; width: 18px; text-align: center; flex: 0 0 auto; }
+.cmp-ico { font-size: 15px; margin-right: 6px; }
+
 /* ---------- Chart area ---------- */
 .chart { width: 100%; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -230,11 +247,64 @@ h1, h2 { margin: 0; }
 .cmp-bar-fill.a { background: var(--actual); }
 .cmp-nums { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* ---------- History ---------- */
+.hist-list { display: flex; flex-direction: column; gap: 6px; }
+.hist-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: none; background: transparent; text-align: left;
+  padding: 10px 4px; border-bottom: 1px solid var(--hairline);
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-row:active { background: var(--surface-2); border-radius: 10px; }
+.hist-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.hist-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hist-month { font-size: 14.5px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
+.hist-tag {
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--baseline); border-radius: 999px; padding: 1px 7px;
+}
+.hist-net { font-size: 14.5px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.hist-net.good { color: var(--good); }
+.hist-net.over { color: var(--over); }
+.hist-bars { display: flex; flex-direction: column; gap: 3px; }
+.hist-bar-track { height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.hist-bar { height: 100%; border-radius: 4px; }
+.hist-bar.in { background: var(--good-fill); }
+.hist-bar.out { background: var(--actual); }
+.hist-nums { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hist-chev { color: var(--muted); font-size: 20px; flex: 0 0 auto; }
+
+.trend-single {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 24px 0; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.trend-single.good { color: var(--good); }
+.trend-single.over { color: var(--over); }
+.trend-single span { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+
+.privacy {
+  text-align: center; color: var(--muted); font-size: 12px;
+  margin: 2px 12px 0; line-height: 1.5;
+}
+
+/* ---------- Icon picker ---------- */
+.sheet-title { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 10px; }
+.icon-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+  padding: 4px 2px 14px;
+}
+.icon-opt {
+  aspect-ratio: 1; border: 1px solid var(--hairline); background: var(--surface-2);
+  border-radius: 12px; font-size: 22px; display: flex; align-items: center; justify-content: center;
+}
+.icon-opt:active { transform: scale(0.92); border-color: var(--brand); }
+.icon-auto { font-size: 14px; font-weight: 700; color: var(--brand); }
+
 /* ---------- Bottom tab bar ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   margin: 0 auto; max-width: 560px;
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(12px);
   border-top: 1px solid var(--hairline);

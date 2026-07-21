@@ -17,6 +17,12 @@ your phone's home screen and use it fully offline like a native app.
 - **Compare** — planned vs. actual, at a glance: overall income/spending/net
   deltas, an overview chart, and a per-category breakdown showing which
   categories came in over or under budget.
+- **History** — every month you plan or track is kept privately on your device.
+  See a net-savings-over-time trend, per-month income/spending, and tap any
+  month to jump to it.
+
+Categories get an **icon automatically** based on their name (🏠 Rent,
+🛒 Groceries, 🚗 Transport, …). Tap a category's icon to pick a different one.
 
 Other conveniences:
 
@@ -38,6 +44,11 @@ phone is **GitHub Pages**:
    **Install app / Add to Home screen** prompt (Android Chrome).
 
 Now it launches full-screen from your home screen and works offline.
+
+> **Seeing only this README instead of the app?** GitHub Pages is serving a
+> branch that doesn't contain the app yet. Make sure **Settings → Pages** points
+> at the branch these files live on (or merge them into your default branch),
+> and open the URL ending in **`/Budgie/`**.
 
 ### Run locally
 

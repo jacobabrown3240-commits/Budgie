@@ -27,10 +27,65 @@
       ]
     };
   }
-  function row(name, planned) {
-    return { id: uid(), name: name, planned: planned, actual: null };
+  function row(name, planned, icon) {
+    return { id: uid(), name: name, planned: planned, actual: null, icon: icon || null };
   }
   function uid() { return Math.random().toString(36).slice(2, 9); }
+
+  /* ---------- Icons ---------- */
+  // Auto-pick an emoji from the category name so the obvious things get an
+  // icon without any setup. A row can override this via the icon picker.
+  var EXPENSE_RULES = [
+    [/rent|mortgage|housing|apartment|landlord|hoa/i, "🏠"],       // 🏠
+    [/grocer|food|supermarket|market/i, "🛒"],                     // 🛒
+    [/gas|fuel|petrol/i, "⛽"],                                          // ⛽
+    [/transport|car|auto|uber|lyft|bus|train|subway|metro|commut|parking|toll/i, "🚗"], // 🚗
+    [/util|electric|water|power|heat|sewage/i, "💡"],              // 💡
+    [/internet|wifi|broadband/i, "🌐"],                            // 🌐
+    [/phone|mobile|cell/i, "📱"],                                  // 📱
+    [/coffee|cafe/i, "☕"],                                              // ☕
+    [/dining|restaurant|eat|takeout|lunch|dinner|drinks|bar/i, "🍽️"], // 🍽️
+    [/subscri|netflix|spotify|stream|hulu|disney|prime/i, "📺"],   // 📺
+    [/sav|invest|401|ira|emergency/i, "🏦"],                       // 🏦
+    [/gym|fitness|workout|sport/i, "🏋️"],                     // 🏋️
+    [/health|medical|doctor|dentist|pharmacy|meds|medic/i, "🩺"],  // 🩺
+    [/entertain|movie|cinema|concert|hobby/i, "🎬"],               // 🎬
+    [/game|gaming/i, "🎮"],                                        // 🎮
+    [/shop|clothe|apparel|amazon|retail/i, "🛍️"],            // 🛍️
+    [/insur/i, "🛡️"],                                        // 🛡️
+    [/educat|school|tuition|book|course|student|class/i, "🎓"],    // 🎓
+    [/pet|dog|cat|vet/i, "🐾"],                                    // 🐾
+    [/travel|vacation|flight|hotel|trip|airbnb/i, "✈️"],           // ✈️
+    [/kid|child|baby|daycare|childcare|diaper/i, "🧸"],            // 🧸
+    [/debt|loan|credit|repay/i, "💳"],                             // 💳
+    [/gift|present|donat|charity|tithe/i, "🎁"],                   // 🎁
+    [/beauty|hair|salon|cosmet|nails/i, "💄"],                     // 💄
+    [/laundry|clean/i, "🧹"],                                      // 🧹
+    [/tax/i, "🧾"]                                                 // 🧾
+  ];
+  var INCOME_RULES = [
+    [/paycheck|salary|wage|job|employ|payroll/i, "💼"],            // 💼
+    [/side|gig|freelance|contract|1099|consult/i, "🧑‍💻"], // 🧑‍💻
+    [/bonus/i, "🎉"],                                              // 🎉
+    [/interest|dividend|invest|capital|stock|crypto/i, "📈"],      // 📈
+    [/gift/i, "🎁"],                                               // 🎁
+    [/refund|rebate|tax/i, "🧾"],                                  // 🧾
+    [/rent|rental/i, "🏠"],                                        // 🏠
+    [/business|sales|shop/i, "🏪"]                                 // 🏪
+  ];
+  var ICON_CHOICES = [
+    "🏠","🛒","🚗","⛽","💡","🌐","📱","🍽️",
+    "☕","📺","🏦","🏋️","🩺","🎬","🎮","🛍️",
+    "🛡️","🎓","🐾","✈️","🧸","💳","🎁","💄",
+    "🧹","🧾","💼","🧑‍💻","📈","🎉","💵","💸"
+  ];
+  function iconFor(name, type) {
+    var rules = type === "income" ? INCOME_RULES : EXPENSE_RULES;
+    var n = String(name || "");
+    for (var i = 0; i < rules.length; i++) if (rules[i][0].test(n)) return rules[i][1];
+    return type === "income" ? "💵" : "💸"; // 💵 / 💸
+  }
+  function rowIcon(r, type) { return r.icon ? r.icon : iconFor(r.name, type); }
 
   /* ---------- State ---------- */
   var state = load();
@@ -98,6 +153,7 @@
     renderPlan();
     renderActual();
     renderCompare();
+    renderHistory();
   }
 
   /* ---------- PLAN ---------- */
@@ -239,7 +295,7 @@
       return '' +
         '<div class="cmp-row">' +
           '<div class="cmp-top">' +
-            '<span class="cmp-name">' + esc(r.name) + '</span>' +
+            '<span class="cmp-name"><span class="cmp-ico">' + rowIcon(r, "expense") + '</span>' + esc(r.name) + '</span>' +
             '<span class="cmp-delta ' + dcls + '">' + dtext + '</span>' +
           '</div>' +
           '<div class="cmp-bars">' +
@@ -252,10 +308,138 @@
   }
   function pct(v, max) { return Math.max(0, Math.min(100, (v / max) * 100)); }
 
+  /* ============================================================
+     HISTORY
+     ============================================================ */
+  function monthTotals(m) {
+    var pIncome = sum(m.income, "planned");
+    var pExp = sum(m.expenses, "planned");
+    var aIncome = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var aExp = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var hasActual = m.income.concat(m.expenses).some(function (r) {
+      return r.actual != null && r.actual !== "";
+    });
+    // "Effective" = what really happened if logged, otherwise the plan.
+    var income = hasActual ? aIncome : pIncome;
+    var spent = hasActual ? aExp : pExp;
+    return { pIncome: pIncome, pExp: pExp, aIncome: aIncome, aExp: aExp,
+             hasActual: hasActual, income: income, spent: spent, net: income - spent };
+  }
+  function hasData(m) {
+    var t = monthTotals(m);
+    return t.pIncome > 0 || t.pExp > 0 || t.aIncome > 0 || t.aExp > 0;
+  }
+
+  function renderHistory() {
+    var keys = Object.keys(state.months).filter(function (k) { return hasData(state.months[k]); });
+    keys.sort(); // ascending by "YYYY-MM"
+
+    var sumEl = document.getElementById("historySummary");
+    var chartEl = document.getElementById("historyChart");
+    var listEl = document.getElementById("historyList");
+    var subEl = document.getElementById("historyTrendSub");
+
+    if (!keys.length) {
+      sumEl.innerHTML = "";
+      subEl.textContent = "";
+      chartEl.innerHTML = emptyMsg("Once you plan and track a month, your history builds here.");
+      listEl.innerHTML = "";
+      return;
+    }
+
+    var logged = keys.filter(function (k) { return monthTotals(state.months[k]).hasActual; });
+    var totalSaved = logged.reduce(function (t, k) { return t + monthTotals(state.months[k]).net; }, 0);
+    var avg = logged.length ? totalSaved / logged.length : 0;
+
+    sumEl.innerHTML =
+      stat("Months tracked", String(keys.length)) +
+      stat("Total saved", signedMoney(totalSaved)) +
+      statAccent("Avg / month", signedMoney(Math.round(avg)));
+
+    subEl.textContent = logged.length ? logged.length + " month" + (logged.length > 1 ? "s" : "") + " logged" : "planned only";
+    renderTrend(chartEl, keys);
+
+    // Month list, most recent first.
+    var desc = keys.slice().reverse();
+    listEl.innerHTML = desc.map(function (k) {
+      var t = monthTotals(state.months[k]);
+      var cls = t.net >= 0 ? "good" : "over";
+      var tag = t.hasActual ? "" : '<span class="hist-tag">planned</span>';
+      var barMax = Math.max(t.income, t.spent, 1);
+      return '' +
+        '<button class="hist-row" data-gomonth="' + k + '">' +
+          '<div class="hist-main">' +
+            '<div class="hist-top">' +
+              '<span class="hist-month">' + monthName(k) + tag + '</span>' +
+              '<span class="hist-net ' + cls + '">' + signedMoney(t.net) + '</span>' +
+            '</div>' +
+            '<div class="hist-bars">' +
+              '<div class="hist-bar-track"><div class="hist-bar in" style="width:' + pct(t.income, barMax) + '%"></div></div>' +
+              '<div class="hist-bar-track"><div class="hist-bar out" style="width:' + pct(t.spent, barMax) + '%"></div></div>' +
+            '</div>' +
+            '<div class="hist-nums"><span>In ' + money(t.income) + '</span><span>Out ' + money(t.spent) + '</span></div>' +
+          '</div>' +
+          '<span class="hist-chev">&#8250;</span>' +
+        '</button>';
+    }).join("");
+  }
+
+  // Net-savings-over-time line chart (single series, zero baseline).
+  function renderTrend(el, keys) {
+    var pts = keys.map(function (k) { return { k: k, net: monthTotals(state.months[k]).net }; });
+    if (pts.length < 2) {
+      // A single month: show its net as a simple figure rather than a 1-point line.
+      var only = pts[0];
+      el.innerHTML = '<div class="trend-single ' + (only.net >= 0 ? "good" : "over") + '">' +
+        signedMoney(only.net) + '<span>net in ' + monthName(only.k) + '</span></div>';
+      return;
+    }
+
+    var W = 320, H = 150, padL = 8, padR = 44, padT = 12, padB = 22;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var vals = pts.map(function (p) { return p.net; });
+    var maxV = Math.max.apply(null, vals.concat([0]));
+    var minV = Math.min.apply(null, vals.concat([0]));
+    if (maxV === minV) { maxV += 1; minV -= 1; }
+    var span = maxV - minV;
+    var x = function (i) { return padL + (pts.length === 1 ? innerW / 2 : innerW * i / (pts.length - 1)); };
+    var y = function (v) { return padT + innerH * (1 - (v - minV) / span); };
+
+    var ink = css("--ink-2"), muted = css("--muted"), grid = css("--hairline");
+    var lineCol = css("--brand"), good = css("--good-fill"), over = css("--over");
+    var zeroY = y(0);
+
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Net savings by month">';
+    // zero baseline
+    s += '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (padL + innerW) + '" y2="' + zeroY + '" stroke="' + grid + '" stroke-width="1"/>';
+    s += '<text x="' + (padL + innerW + 6) + '" y="' + (zeroY + 4) + '" font-size="10" fill="' + muted + '">$0</text>';
+
+    // line path
+    var d = pts.map(function (p, i) { return (i === 0 ? "M" : "L") + x(i) + " " + y(p.net); }).join(" ");
+    s += '<path d="' + d + '" fill="none" stroke="' + lineCol + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+
+    // markers + x labels
+    pts.forEach(function (p, i) {
+      var col = p.net >= 0 ? good : over;
+      s += '<circle cx="' + x(i) + '" cy="' + y(p.net) + '" r="4" fill="' + col + '" stroke="' + css("--surface") + '" stroke-width="1.5"/>';
+      // label only the endpoints to avoid clutter
+      if (i === 0 || i === pts.length - 1) {
+        var lbl = keyToDate(p.k).toLocaleDateString(undefined, { month: "short" });
+        var anchor = i === 0 ? "start" : "end";
+        s += '<text x="' + x(i) + '" y="' + (H - 6) + '" font-size="10" text-anchor="' + anchor + '" fill="' + muted + '">' + lbl + '</text>';
+      }
+    });
+    // value label on the latest point
+    var last = pts[pts.length - 1];
+    s += '<text x="' + (x(pts.length - 1)) + '" y="' + (y(last.net) - 9) + '" font-size="11" font-weight="700" text-anchor="end" fill="' + (last.net >= 0 ? good : over) + '">' + signedMoney(last.net) + '</text>';
+    s += "</svg>";
+    el.innerHTML = s;
+  }
+
   /* ---------- Donut chart ---------- */
   function renderDonut(el, list, field, total) {
     var items = list
-      .map(function (r, i) { return { name: r.name, val: Number(r[field]) || 0, i: i }; })
+      .map(function (r, i) { return { name: r.name, val: Number(r[field]) || 0, i: i, icon: rowIcon(r, "expense") }; })
       .filter(function (x) { return x.val > 0; })
       .sort(function (a, b) { return b.val - a.val; });
 
@@ -269,7 +453,7 @@
     if (items.length > 8) {
       var head = items.slice(0, 7);
       var restVal = items.slice(7).reduce(function (t, x) { return t + x.val; }, 0);
-      head.push({ name: "Other", val: restVal, i: -1 });
+      head.push({ name: "Other", val: restVal, i: -1, icon: "🗂️" });
       shown = head;
     }
 
@@ -303,6 +487,7 @@
       var p = Math.round((x.val / total) * 100);
       return '<div class="leg-item">' +
         '<span class="swatch" style="background:' + color + '"></span>' +
+        '<span class="leg-ico">' + (x.icon || "") + '</span>' +
         '<span class="leg-name">' + esc(x.name) + '</span>' +
         '<span class="leg-val">' + money(x.val) + '</span>' +
         '<span class="leg-pct">' + p + '%</span>' +
@@ -313,11 +498,22 @@
   }
 
   /* ---------- Row templates ---------- */
+  function rowColor(type, i) {
+    return type === "expense" ? css(SERIES[i % SERIES.length]) : css("--good-fill");
+  }
+  // Tappable emoji badge tinted with the category's color (keeps color identity
+  // and adds a recognisable icon). Tapping opens the icon picker.
+  function iconBadgeBtn(r, type, color) {
+    return '<button class="ico-badge" data-iconpick="1" style="--bc:' + color + '" aria-label="Change icon">' + rowIcon(r, type) + '</button>';
+  }
+  function iconChip(icon, color) {
+    return '<span class="ico-chip" style="--bc:' + color + '">' + icon + '</span>';
+  }
   function editRow(r, type, i, field) {
-    var color = type === "expense" ? css(SERIES[i % SERIES.length]) : css("--good-fill");
+    var color = rowColor(type, i);
     return '' +
       '<div class="row" data-type="' + type + '" data-i="' + i + '">' +
-        '<span class="dot" style="background:' + color + '"></span>' +
+        iconBadgeBtn(r, type, color) +
         '<input class="name" value="' + esc(r.name) + '" data-field="name" placeholder="Name" />' +
         '<span class="amount-field"><span class="cur">$</span>' +
         '<input class="amount" inputmode="decimal" data-field="' + field + '" value="' + amtVal(r[field]) + '" placeholder="0" /></span>' +
@@ -325,11 +521,11 @@
       '</div>';
   }
   function actualRow(r, type, i) {
-    var color = type === "expense" ? css(SERIES[i % SERIES.length]) : css("--good-fill");
+    var color = rowColor(type, i);
     var planned = Number(r.planned) || 0;
     return '' +
       '<div class="row" data-type="' + type + '" data-i="' + i + '">' +
-        '<span class="dot" style="background:' + color + '"></span>' +
+        iconBadgeBtn(r, type, color) +
         '<span class="name" style="opacity:.95">' + esc(r.name) +
           '<span style="display:block;font-size:11px;color:var(--muted)">planned ' + money(planned) + '</span>' +
         '</span>' +
@@ -365,14 +561,19 @@
   document.getElementById("tabbar").addEventListener("click", function (e) {
     var btn = e.target.closest(".tab");
     if (!btn) return;
-    currentView = btn.dataset.view;
-    document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("is-active", t === btn); });
-    ["plan", "actual", "compare"].forEach(function (v) {
-      document.getElementById("view-" + v).hidden = v !== currentView;
+    switchView(btn.dataset.view);
+  });
+  function switchView(view) {
+    currentView = view;
+    document.querySelectorAll(".tab").forEach(function (t) {
+      t.classList.toggle("is-active", t.dataset.view === view);
+    });
+    ["plan", "actual", "compare", "history"].forEach(function (v) {
+      document.getElementById("view-" + v).hidden = v !== view;
     });
     document.getElementById("content").scrollTop = 0;
     window.scrollTo(0, 0);
-  });
+  }
 
   // Month navigation
   document.getElementById("prevMonth").addEventListener("click", function () { changeMonth(-1); });
@@ -407,6 +608,23 @@
 
   // Delete + add rows (click)
   document.getElementById("content").addEventListener("click", function (e) {
+    // Icon picker
+    var pick = e.target.closest("[data-iconpick]");
+    if (pick) {
+      var pr = pick.closest(".row");
+      openIconPicker(pr.dataset.type, parseInt(pr.dataset.i, 10));
+      return;
+    }
+    // Jump to a month from history
+    var go = e.target.closest("[data-gomonth]");
+    if (go) {
+      state.selected = go.dataset.gomonth;
+      if (!state.months[state.selected]) state.months[state.selected] = defaultMonth();
+      save();
+      switchView("compare");
+      render();
+      return;
+    }
     var del = e.target.closest("[data-del]");
     if (del) {
       var rowEl = del.closest(".row");
@@ -459,6 +677,36 @@
     document.getElementById("actualIncomeTotal").textContent = money(incomeActual);
     document.getElementById("actualExpenseTotal").textContent = money(expenseActual);
   }
+
+  /* ---------- Icon picker sheet ---------- */
+  var iconSheet = document.getElementById("iconSheet");
+  var iconGrid = document.getElementById("iconGrid");
+  var pickTarget = null; // { type, index }
+
+  // Build the grid once (an "Auto" reset chip + the emoji choices).
+  iconGrid.innerHTML =
+    '<button class="icon-opt icon-auto" data-icon="__auto__" title="Auto from name">Aa</button>' +
+    ICON_CHOICES.map(function (ic) {
+      return '<button class="icon-opt" data-icon="' + ic + '">' + ic + '</button>';
+    }).join("");
+
+  function openIconPicker(type, index) {
+    pickTarget = { type: type, index: index };
+    iconSheet.hidden = false;
+  }
+  iconSheet.addEventListener("click", function (e) {
+    if (e.target === iconSheet || e.target.closest(".sheet-close")) { iconSheet.hidden = true; return; }
+    var opt = e.target.closest("[data-icon]");
+    if (!opt || !pickTarget) return;
+    var list = pickTarget.type === "income" ? month().income : month().expenses;
+    var rec = list[pickTarget.index];
+    if (rec) {
+      var chosen = opt.dataset.icon;
+      rec.icon = chosen === "__auto__" ? null : chosen;
+      save(); render();
+    }
+    iconSheet.hidden = true;
+  });
 
   /* ---------- Menu sheet ---------- */
   var sheet = document.getElementById("menuSheet");
