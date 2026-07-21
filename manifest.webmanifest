@@ -1,6 +1,6 @@
 {
-  "name": "Budgie — Monthly Budget",
-  "short_name": "Budgie",
+  "name": "Kakeibo — Monthly Budget",
+  "short_name": "Kakeibo",
   "description": "Plan your monthly budget, log what actually happened, and see the difference.",
   "start_url": ".",
   "scope": ".",

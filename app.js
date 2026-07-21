@@ -1,5 +1,5 @@
 /* ============================================================
-   Budgie — a phone-first monthly budget planner & tracker.
+   Kakeibo — a phone-first monthly budget planner & tracker.
    All data lives in localStorage on the device. No accounts.
    ============================================================ */
 (function () {
@@ -744,7 +744,7 @@
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "budgie-backup-" + monthKey(new Date()) + ".json";
+    a.download = "kakeibo-backup-" + monthKey(new Date()) + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   }
@@ -761,7 +761,7 @@
           if (!state.selected || !state.months[state.selected]) state.selected = monthKey(new Date());
           save(); render();
           toast("Backup imported.");
-        } else { toast("That file doesn't look like a Budgie backup."); }
+        } else { toast("That file doesn't look like a Kakeibo backup."); }
       } catch (err) { toast("Could not read that file."); }
     };
     reader.readAsText(file);
