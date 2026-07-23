@@ -24,7 +24,8 @@
         row("Subscriptions", 0),
         row("Savings", 0),
         row("Other", 0)
-      ]
+      ],
+      log: []
     };
   }
   function row(name, planned, icon) {
@@ -141,6 +142,26 @@
   function actualOr(r, fallbackField) {
     return r.actual == null || r.actual === "" ? (fallbackField ? Number(r[fallbackField]) || 0 : 0) : Number(r.actual);
   }
+
+  /* ---------- Transaction log (running totals per category) ---------- */
+  function monthLog(m) { if (!m.log) m.log = []; return m.log; }
+  function loggedEntries(m, catId) {
+    return monthLog(m).filter(function (e) { return e.catId === catId; });
+  }
+  function loggedTotal(m, catId) {
+    return loggedEntries(m, catId).reduce(function (t, e) { return t + (Number(e.amount) || 0); }, 0);
+  }
+  // A category is "tracked" once it has at least one logged entry — its actual
+  // then comes from the sum of those entries instead of a typed-in number.
+  function isTracked(m, r) {
+    return monthLog(m).some(function (e) { return e.catId === r.id; });
+  }
+  function expenseActualOf(m, r) {
+    return isTracked(m, r) ? loggedTotal(m, r.id) : actualOr(r);
+  }
+  function sumExpenseActual(m) {
+    return m.expenses.reduce(function (t, r) { return t + expenseActualOf(m, r); }, 0);
+  }
   function css(varName) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   }
@@ -154,6 +175,7 @@
     renderActual();
     renderCompare();
     renderHistory();
+    renderLog();
   }
 
   /* ---------- PLAN ---------- */
@@ -181,7 +203,7 @@
   function renderActual() {
     var m = month();
     var incomeActual = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
-    var expenseActual = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var expenseActual = sumExpenseActual(m);
     var left = incomeActual - expenseActual;
 
     document.getElementById("actualSummary").innerHTML =
@@ -201,7 +223,7 @@
     var pIncome = sum(m.income, "planned");
     var aIncome = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
     var pExp = sum(m.expenses, "planned");
-    var aExp = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var aExp = sumExpenseActual(m);
     var pLeft = pIncome - pExp;
     var aLeft = aIncome - aExp;
     var diff = aLeft - pLeft;
@@ -252,7 +274,7 @@
     var pIncome = sum(m.income, "planned");
     var aIncome = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
     var pExp = sum(m.expenses, "planned");
-    var aExp = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var aExp = sumExpenseActual(m);
 
     var groups = [
       { label: "Income", planned: pIncome, actual: aIncome },
@@ -295,18 +317,18 @@
   /* ---------- Compare: per-category table with dual bars ---------- */
   function renderCompareTable(m) {
     var rows = m.expenses.filter(function (r) {
-      return (Number(r.planned) || 0) > 0 || actualOr(r) > 0;
+      return (Number(r.planned) || 0) > 0 || expenseActualOf(m, r) > 0;
     });
     var el = document.getElementById("compareTable");
     if (!rows.length) { el.innerHTML = emptyMsg("No spending yet this month."); return; }
 
     var max = Math.max.apply(null, rows.map(function (r) {
-      return Math.max(Number(r.planned) || 0, actualOr(r));
+      return Math.max(Number(r.planned) || 0, expenseActualOf(m, r));
     }).concat([1]));
 
     el.innerHTML = rows.map(function (r) {
       var p = Number(r.planned) || 0;
-      var a = actualOr(r);
+      var a = expenseActualOf(m, r);
       var delta = Math.round(a - p);
       var dcls, dtext;
       if (delta === 0) { dcls = "good"; dtext = "on plan"; }
@@ -335,8 +357,8 @@
     var pIncome = sum(m.income, "planned");
     var pExp = sum(m.expenses, "planned");
     var aIncome = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
-    var aExp = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
-    var hasActual = m.income.concat(m.expenses).some(function (r) {
+    var aExp = sumExpenseActual(m);
+    var hasActual = monthLog(m).length > 0 || m.income.concat(m.expenses).some(function (r) {
       return r.actual != null && r.actual !== "";
     });
     // "Effective" = what really happened if logged, otherwise the plan.
@@ -456,6 +478,100 @@
     el.innerHTML = s;
   }
 
+  /* ============================================================
+     LOG (running tracker for variable expenses)
+     ============================================================ */
+  function renderLog() {
+    var m = month();
+    var log = monthLog(m);
+    var entries = log.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+
+    // Category <select> — remember the last-used category.
+    var sel = document.getElementById("logCat");
+    var opts = m.expenses.map(function (r) {
+      return '<option value="' + r.id + '">' + rowIcon(r, "expense") + "  " + esc(r.name) + "</option>";
+    }).join("");
+    sel.innerHTML = opts;
+    if (state.lastLogCat && m.expenses.some(function (r) { return r.id === state.lastLogCat; })) {
+      sel.value = state.lastLogCat;
+    }
+
+    // Summary strip.
+    var total = entries.reduce(function (t, e) { return t + (Number(e.amount) || 0); }, 0);
+    var trackedCats = m.expenses.filter(function (r) { return isTracked(m, r); });
+    document.getElementById("logSummary").innerHTML =
+      stat("Entries", String(entries.length)) +
+      stat("Categories", String(trackedCats.length)) +
+      statAccent("Logged", money(total));
+
+    // Per-category totals (the running "add up to topics" view).
+    var totalsEl = document.getElementById("logTotals");
+    if (!trackedCats.length) {
+      totalsEl.innerHTML = emptyMsg("Log a purchase above and it adds up here — and fills in that category's actual.");
+    } else {
+      totalsEl.innerHTML = trackedCats.map(function (r) {
+        var t = loggedTotal(m, r.id);
+        var p = Number(r.planned) || 0;
+        var n = loggedEntries(m, r.id).length;
+        var over = p > 0 && t > p;
+        var remain = p > 0 ? (over ? money(t - p) + " over" : money(p - t) + " left") : "no budget set";
+        return '<div class="logtot">' +
+            iconChip(rowIcon(r, "expense"), rowColor("expense", m.expenses.indexOf(r))) +
+            '<div class="logtot-main">' +
+              '<div class="logtot-top"><span class="logtot-name">' + esc(r.name) + '</span>' +
+                '<span class="logtot-val">' + money(t) + '</span></div>' +
+              '<div class="logtot-sub"><span>' + n + ' item' + (n === 1 ? '' : 's') +
+                (p > 0 ? ' · planned ' + money(p) : '') + '</span>' +
+                '<span class="' + (over ? 'over' : 'muted2') + '">' + remain + '</span></div>' +
+            '</div>' +
+          '</div>';
+      }).join("");
+    }
+
+    // Entry list (most recent first).
+    var listEl = document.getElementById("logList");
+    document.getElementById("logCount").textContent = entries.length ? money(total) : "";
+    if (!entries.length) {
+      listEl.innerHTML = emptyMsg("No entries yet this month.");
+      return;
+    }
+    listEl.innerHTML = entries.map(function (e) {
+      var cat = m.expenses.filter(function (r) { return r.id === e.catId; })[0];
+      var icon = cat ? rowIcon(cat, "expense") : "🏷️";
+      var catName = cat ? cat.name : "(deleted category)";
+      var d = e.ts ? new Date(e.ts) : null;
+      var dateStr = d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+      var label = e.note ? esc(e.note) : esc(catName);
+      var subline = (e.note ? esc(catName) + " · " : "") + dateStr;
+      return '<div class="logrow" data-eid="' + e.id + '">' +
+          '<span class="logrow-ico">' + icon + '</span>' +
+          '<div class="logrow-main">' +
+            '<span class="logrow-label">' + label + '</span>' +
+            '<span class="logrow-sub">' + subline + '</span>' +
+          '</div>' +
+          '<span class="logrow-amt">' + money(e.amount) + '</span>' +
+          '<button class="del" data-delentry="1" aria-label="Delete entry">&times;</button>' +
+        '</div>';
+    }).join("");
+  }
+
+  function addLogEntry() {
+    var m = month();
+    var sel = document.getElementById("logCat");
+    var amtInput = document.getElementById("logAmount");
+    var noteInput = document.getElementById("logNote");
+    var catId = sel.value;
+    var amount = parseFloat(String(amtInput.value).replace(/[^0-9.]/g, ""));
+    if (!catId || !amount || amount <= 0) { toast("Enter an amount and pick a category."); return; }
+    monthLog(m).push({ id: uid(), catId: catId, amount: amount, note: noteInput.value.trim(), ts: Date.now() });
+    state.lastLogCat = catId;
+    amtInput.value = "";
+    noteInput.value = "";
+    save();
+    render();
+    amtInput.focus();
+  }
+
   /* ---------- Donut chart ---------- */
   function renderDonut(el, list, field, total) {
     var items = list
@@ -544,14 +660,28 @@
   function actualRow(r, type, i) {
     var color = rowColor(type, i);
     var planned = Number(r.planned) || 0;
+    var m = month();
+    var tracked = type === "expense" && isTracked(m, r);
+    var amountCell;
+    var sub = 'planned ' + money(planned);
+    if (tracked) {
+      var n = loggedEntries(m, r.id).length;
+      sub = 'from Log · ' + n + ' item' + (n === 1 ? '' : 's');
+      amountCell =
+        '<span class="amount-field readonly" data-gotolog="1"><span class="cur">$</span>' +
+        '<span class="amount ro">' + Math.round(loggedTotal(m, r.id)).toLocaleString() + '</span></span>';
+    } else {
+      amountCell =
+        '<span class="amount-field"><span class="cur">$</span>' +
+        '<input class="amount" inputmode="decimal" data-field="actual" value="' + amtVal(r.actual) + '" placeholder="' + planned + '" /></span>';
+    }
     return '' +
       '<div class="row" data-type="' + type + '" data-i="' + i + '">' +
         iconBadgeBtn(r, type, color) +
         '<span class="name" style="opacity:.95">' + esc(r.name) +
-          '<span style="display:block;font-size:11px;color:var(--muted)">planned ' + money(planned) + '</span>' +
+          '<span style="display:block;font-size:11px;color:var(--muted)">' + sub + '</span>' +
         '</span>' +
-        '<span class="amount-field"><span class="cur">$</span>' +
-        '<input class="amount" inputmode="decimal" data-field="actual" value="' + amtVal(r.actual) + '" placeholder="' + planned + '" /></span>' +
+        amountCell +
       '</div>';
   }
   function amtVal(v) { return v == null || v === "" ? "" : String(v); }
@@ -595,7 +725,7 @@
     document.querySelectorAll(".tab").forEach(function (t) {
       t.classList.toggle("is-active", t.dataset.view === view);
     });
-    ["plan", "actual", "compare", "history"].forEach(function (v) {
+    ["plan", "actual", "compare", "history", "log"].forEach(function (v) {
       document.getElementById("view-" + v).hidden = v !== view;
     });
     document.getElementById("content").scrollTop = 0;
@@ -642,6 +772,21 @@
       openIconPicker(pr.dataset.type, parseInt(pr.dataset.i, 10));
       return;
     }
+    // Add a log entry
+    if (e.target.closest("#logAddBtn")) { addLogEntry(); return; }
+    // Delete a log entry
+    var delEntry = e.target.closest("[data-delentry]");
+    if (delEntry) {
+      var eid = delEntry.closest(".logrow").dataset.eid;
+      var lg = monthLog(month());
+      for (var li = 0; li < lg.length; li++) {
+        if (lg[li].id === eid) { lg.splice(li, 1); break; }
+      }
+      save(); render();
+      return;
+    }
+    // Tapping a tracked (read-only) actual jumps to the Log
+    if (e.target.closest("[data-gotolog]")) { switchView("log"); return; }
     // Jump to a month from history
     var go = e.target.closest("[data-gomonth]");
     if (go) {
@@ -668,6 +813,15 @@
       if (t === "income") month().income.push(row("New income", 0));
       else month().expenses.push(row("New category", 0));
       save(); render();
+    }
+  });
+
+  // Enter key in the Log quick-add fields submits the entry.
+  document.getElementById("content").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    if (e.target.id === "logAmount" || e.target.id === "logNote") {
+      e.preventDefault();
+      addLogEntry();
     }
   });
 
@@ -743,7 +897,7 @@
   function renderActual2() {
     var m = month();
     var incomeActual = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
-    var expenseActual = m.expenses.reduce(function (t, r) { return t + actualOr(r); }, 0);
+    var expenseActual = sumExpenseActual(m);
     var left = incomeActual - expenseActual;
     document.getElementById("actualSummary").innerHTML =
       stat("Actual income", money(incomeActual)) + stat("Actual spent", money(expenseActual)) +

@@ -72,6 +72,34 @@
         </div>
       </section>
 
+      <!-- LOG -->
+      <section class="view" id="view-log" hidden>
+        <div class="summary-strip" id="logSummary"></div>
+        <div class="card">
+          <div class="card-head"><h2>Add a purchase</h2></div>
+          <div class="log-add">
+            <select class="log-select" id="logCat" aria-label="Category"></select>
+            <div class="log-add-row">
+              <span class="amount-field big"><span class="cur">$</span>
+                <input class="amount" id="logAmount" inputmode="decimal" placeholder="0" /></span>
+              <input class="log-note" id="logNote" placeholder="Note (e.g. Costco)" />
+            </div>
+            <button class="log-add-btn" id="logAddBtn">Add to Log</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Category totals</h2></div>
+          <div id="logTotals" class="log-totals"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Entries</h2><span class="card-sub" id="logCount"></span></div>
+          <div id="logList" class="log-list"></div>
+        </div>
+        <p class="privacy">&#128274; Every entry stays on this device and feeds its category's actual automatically.</p>
+      </section>
+
       <!-- HISTORY -->
       <section class="view" id="view-history" hidden>
         <div class="summary-strip" id="historySummary"></div>
@@ -117,6 +145,9 @@
       </button>
       <button class="tab" data-view="compare">
         <span class="tab-ico">&#8646;</span><span>Compare</span>
+      </button>
+      <button class="tab" data-view="log">
+        <span class="tab-ico">&#128203;</span><span>Log</span>
       </button>
       <button class="tab" data-view="history">
         <span class="tab-ico">&#8635;</span><span>History</span>
