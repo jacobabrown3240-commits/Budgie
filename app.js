@@ -210,9 +210,11 @@
     var spentSub = deltaLabel(aExp - pExp, false);
 
     document.getElementById("compareSummary").innerHTML =
-      statDelta("Income vs plan", money(aIncome), incomeSub) +
-      statDelta("Spending vs plan", money(aExp), spentSub) +
-      statAccent(diff >= 0 ? "Better by" : "Worse by", signedMoney(diff));
+      statDelta("Income", money(aIncome), incomeSub) +
+      statDelta("Spending", money(aExp), spentSub) +
+      statAccentNet(aLeft >= 0 ? "Net saved" : "Net shortfall", signedMoney(aLeft), planCompareText(aLeft, pLeft), aLeft >= 0);
+
+    document.getElementById("compareRecap").innerHTML = recapText(aIncome, aExp, pIncome, pExp);
 
     // Legend
     document.getElementById("compareLegend").innerHTML =
@@ -226,7 +228,23 @@
   function deltaLabel(delta, higherIsGood) {
     if (Math.round(delta) === 0) return { text: "on plan", cls: "good" };
     var good = higherIsGood ? delta > 0 : delta < 0;
-    return { text: signedMoney(delta), cls: good ? "good" : "over" };
+    return { text: signedMoney(delta) + " vs plan", cls: good ? "good" : "over" };
+  }
+  // "$271 under plan" / "$50 over plan" / "exactly on plan" for the net card.
+  function planCompareText(actualNet, plannedNet) {
+    var d = Math.round(actualNet - plannedNet);
+    if (d === 0) return "exactly on plan";
+    if (d > 0) return money(d) + " over plan";
+    return money(-d) + " under plan";
+  }
+  // One plain-English sentence describing the month vs the plan.
+  function recapText(aInc, aExp, pInc, pExp) {
+    var aNet = aInc - aExp, pNet = pInc - pExp;
+    var diff = Math.round(aNet - pNet);
+    if (aNet < 0) return "You spent " + money(-aNet) + " more than you earned this month.";
+    if (diff === 0) return "You saved " + money(aNet) + " — right on your plan.";
+    if (diff > 0) return "You saved " + money(aNet) + " — " + money(diff) + " more than you planned. 🎉";
+    return "You saved " + money(aNet) + " — " + money(-diff) + " short of the " + money(pNet) + " you planned to save.";
   }
 
   /* ---------- Compare: overview chart (income / spending / net) ---------- */
@@ -289,9 +307,11 @@
     el.innerHTML = rows.map(function (r) {
       var p = Number(r.planned) || 0;
       var a = actualOr(r);
-      var delta = a - p;
-      var dcls = Math.round(delta) === 0 ? "good" : (delta <= 0 ? "good" : "over");
-      var dtext = Math.round(delta) === 0 ? "on plan" : signedMoney(delta);
+      var delta = Math.round(a - p);
+      var dcls, dtext;
+      if (delta === 0) { dcls = "good"; dtext = "on plan"; }
+      else if (delta > 0) { dcls = "over"; dtext = money(delta) + " over"; }
+      else { dcls = "good"; dtext = money(-delta) + " under"; }
       return '' +
         '<div class="cmp-row">' +
           '<div class="cmp-top">' +
@@ -513,6 +533,7 @@
     var color = rowColor(type, i);
     return '' +
       '<div class="row" data-type="' + type + '" data-i="' + i + '">' +
+        '<span class="drag-handle" data-drag="1" aria-label="Drag to reorder" title="Drag to reorder">&#8942;&#8942;</span>' +
         iconBadgeBtn(r, type, color) +
         '<input class="name" value="' + esc(r.name) + '" data-field="name" placeholder="Name" />' +
         '<span class="amount-field"><span class="cur">$</span>' +
@@ -541,6 +562,12 @@
   }
   function statAccent(label, value) {
     return '<div class="stat accent"><span class="stat-label">' + label + '</span><span class="stat-value">' + value + '</span></div>';
+  }
+  function statAccentNet(label, value, sub, positive) {
+    return '<div class="stat accent' + (positive ? '' : ' neg') + '">' +
+      '<span class="stat-label">' + label + '</span>' +
+      '<span class="stat-value">' + value + '</span>' +
+      '<span class="stat-accent-sub">' + sub + '</span></div>';
   }
   function statDelta(label, value, delta) {
     return '<div class="stat"><span class="stat-label">' + label + '</span><span class="stat-value">' + value +
@@ -643,6 +670,53 @@
       save(); render();
     }
   });
+
+  // Drag-to-reorder for the Plan lists. Dragging by the handle moves the row's
+  // DOM node live; on release we rebuild the underlying array from DOM order.
+  var drag = null;
+  var contentEl = document.getElementById("content");
+  contentEl.addEventListener("pointerdown", function (e) {
+    var handle = e.target.closest(".drag-handle");
+    if (!handle) return;
+    var rowEl = handle.closest(".row");
+    var listEl = rowEl.parentElement;
+    e.preventDefault();
+    try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    drag = { row: rowEl, list: listEl, id: e.pointerId, handle: handle };
+    rowEl.classList.add("dragging");
+    document.body.classList.add("is-dragging");
+  });
+  contentEl.addEventListener("pointermove", function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    e.preventDefault();
+    var y = e.clientY;
+    var siblings = Array.prototype.slice.call(drag.list.querySelectorAll(".row:not(.dragging)"));
+    var before = null;
+    for (var i = 0; i < siblings.length; i++) {
+      var box = siblings[i].getBoundingClientRect();
+      if (y < box.top + box.height / 2) { before = siblings[i]; break; }
+    }
+    if (before) drag.list.insertBefore(drag.row, before);
+    else drag.list.appendChild(drag.row);
+  });
+  function endDrag(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var listEl = drag.list;
+    var type = drag.row.dataset.type;
+    var order = Array.prototype.slice.call(listEl.querySelectorAll(".row"))
+      .map(function (r) { return parseInt(r.dataset.i, 10); });
+    var arr = type === "income" ? month().income : month().expenses;
+    var reordered = order.map(function (idx) { return arr[idx]; });
+    if (type === "income") month().income = reordered;
+    else month().expenses = reordered;
+    drag.row.classList.remove("dragging");
+    document.body.classList.remove("is-dragging");
+    drag = null;
+    save();
+    render();
+  }
+  contentEl.addEventListener("pointerup", endDrag);
+  contentEl.addEventListener("pointercancel", endDrag);
 
   // Light refresh of summaries/charts while typing (debounced) without
   // rebuilding inputs (which would lose focus).
