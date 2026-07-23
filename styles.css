@@ -136,6 +136,15 @@ h1, h2 { margin: 0; }
 .stat-sub.over { color: var(--over); }
 .stat.accent { background: linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 70%, #000)); border-color: transparent; color: #fff; }
 .stat.accent .stat-label, .stat.accent .stat-value { color: #fff; }
+.stat.accent.neg { background: linear-gradient(160deg, var(--over), color-mix(in srgb, var(--over) 68%, #000)); }
+.stat-accent-sub { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.88); }
+
+/* Compare recap sentence */
+.cmp-recap {
+  margin: -4px 2px 0; padding: 11px 13px;
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+  font-size: 13.5px; line-height: 1.45; color: var(--ink); font-weight: 500;
+}
 
 /* ---------- Cards ---------- */
 .card {
@@ -155,10 +164,23 @@ h1, h2 { margin: 0; }
 /* ---------- Editable rows ---------- */
 .list { display: flex; flex-direction: column; }
 .row {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
   padding: 8px 0; border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
 }
 .row:last-child { border-bottom: none; }
+.row.dragging {
+  border-bottom-color: transparent; border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18); opacity: 0.96;
+}
+body.is-dragging { user-select: none; -webkit-user-select: none; }
+.drag-handle {
+  flex: 0 0 auto; width: 22px; align-self: stretch;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 15px; letter-spacing: -3px;
+  cursor: grab; touch-action: none; margin-left: -4px;
+}
+.drag-handle:active { cursor: grabbing; }
 .row .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 .row .name {
   flex: 1 1 auto; min-width: 0; border: none; background: transparent;
@@ -173,7 +195,7 @@ h1, h2 { margin: 0; }
 .amount-field:focus-within { border-color: var(--brand); }
 .amount-field .cur { color: var(--muted); font-size: 14px; }
 .row .amount {
-  width: 84px; border: none; background: transparent; color: var(--ink);
+  width: 72px; border: none; background: transparent; color: var(--ink);
   font-size: 15px; text-align: right; font-variant-numeric: tabular-nums;
   padding: 4px 0;
 }
