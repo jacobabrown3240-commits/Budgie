@@ -22,13 +22,12 @@
     <!-- Header -->
     <header class="topbar">
       <div class="topbar-row">
+        <button class="menu-btn" id="navBtn" aria-label="Open menu">&#9776;</button>
         <button class="month-nav" id="prevMonth" aria-label="Previous month">&#8249;</button>
-        <button class="month-label" id="monthLabel" aria-haspopup="dialog">
+        <button class="month-label" id="monthLabel">
           <span id="monthText">Month</span>
-          <span class="month-caret">&#9662;</span>
         </button>
         <button class="month-nav" id="nextMonth" aria-label="Next month">&#8250;</button>
-        <button class="menu-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
       </div>
     </header>
 
@@ -134,37 +133,28 @@
         </div>
       </section>
     </main>
-
-    <!-- Bottom nav -->
-    <nav class="tabbar" id="tabbar">
-      <button class="tab is-active" data-view="plan">
-        <span class="tab-ico">&#9635;</span><span>Plan</span>
-      </button>
-      <button class="tab" data-view="actual">
-        <span class="tab-ico">&#10003;</span><span>Actual</span>
-      </button>
-      <button class="tab" data-view="compare">
-        <span class="tab-ico">&#8646;</span><span>Compare</span>
-      </button>
-      <button class="tab" data-view="log">
-        <span class="tab-ico">&#128203;</span><span>Log</span>
-      </button>
-      <button class="tab" data-view="history">
-        <span class="tab-ico">&#8635;</span><span>History</span>
-      </button>
-    </nav>
   </div>
 
-  <!-- Menu sheet -->
-  <div class="sheet-backdrop" id="menuSheet" hidden>
-    <div class="sheet" role="dialog" aria-label="Menu">
-      <div class="sheet-handle"></div>
-      <button class="sheet-item" data-action="copyPrev">Copy plan from previous month</button>
-      <button class="sheet-item" data-action="export">Export backup (.json)</button>
-      <button class="sheet-item" data-action="import">Import backup (.json)</button>
-      <button class="sheet-item danger" data-action="clearMonth">Clear this month</button>
-      <button class="sheet-item sheet-close">Close</button>
-    </div>
+  <!-- Sidebar drawer -->
+  <div class="drawer-backdrop" id="navDrawer" hidden>
+    <nav class="drawer" role="dialog" aria-label="Menu">
+      <div class="drawer-head">
+        <span class="drawer-logo">&#128202;</span>
+        <span class="drawer-title">Kakeibo</span>
+      </div>
+      <div class="drawer-nav">
+        <button class="nav-item is-active" data-view="plan"><span class="nav-ico">&#9635;</span>Plan</button>
+        <button class="nav-item" data-view="actual"><span class="nav-ico">&#10003;</span>Actual</button>
+        <button class="nav-item" data-view="compare"><span class="nav-ico">&#8646;</span>Compare</button>
+        <button class="nav-item" data-view="log"><span class="nav-ico">&#128203;</span>Log</button>
+        <button class="nav-item" data-view="history"><span class="nav-ico">&#8635;</span>History</button>
+      </div>
+      <div class="drawer-sep"></div>
+      <button class="nav-item small" data-action="copyPrev"><span class="nav-ico">&#10697;</span>Copy last month's plan</button>
+      <button class="nav-item small" data-action="export"><span class="nav-ico">&#8615;</span>Export backup</button>
+      <button class="nav-item small" data-action="import"><span class="nav-ico">&#8613;</span>Import backup</button>
+      <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico">&#128465;</span>Clear this month</button>
+    </nav>
   </div>
   <input type="file" id="importFile" accept="application/json" hidden />
 

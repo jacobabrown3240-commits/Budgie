@@ -714,15 +714,29 @@
   /* ============================================================
      EVENTS
      ============================================================ */
-  // Tab switching
-  document.getElementById("tabbar").addEventListener("click", function (e) {
-    var btn = e.target.closest(".tab");
-    if (!btn) return;
-    switchView(btn.dataset.view);
+  // Sidebar drawer: open, close, navigate, and run menu actions.
+  var navDrawer = document.getElementById("navDrawer");
+  document.getElementById("navBtn").addEventListener("click", function () { openDrawer(); });
+  function openDrawer() { navDrawer.hidden = false; }
+  function closeDrawer() { navDrawer.hidden = true; }
+  navDrawer.addEventListener("click", function (e) {
+    // Tap the backdrop (outside the panel) closes.
+    if (e.target === navDrawer) { closeDrawer(); return; }
+    var nav = e.target.closest("[data-view]");
+    if (nav) { switchView(nav.dataset.view); closeDrawer(); return; }
+    var act = e.target.closest("[data-action]");
+    if (act) {
+      var action = act.dataset.action;
+      closeDrawer();
+      if (action === "copyPrev") copyPrevious();
+      else if (action === "export") exportData();
+      else if (action === "import") document.getElementById("importFile").click();
+      else if (action === "clearMonth") clearMonth();
+    }
   });
   function switchView(view) {
     currentView = view;
-    document.querySelectorAll(".tab").forEach(function (t) {
+    document.querySelectorAll(".nav-item[data-view]").forEach(function (t) {
       t.classList.toggle("is-active", t.dataset.view === view);
     });
     ["plan", "actual", "compare", "history", "log"].forEach(function (v) {
@@ -936,21 +950,7 @@
     iconSheet.hidden = true;
   });
 
-  /* ---------- Menu sheet ---------- */
-  var sheet = document.getElementById("menuSheet");
-  document.getElementById("menuBtn").addEventListener("click", function () { sheet.hidden = false; });
-  sheet.addEventListener("click", function (e) {
-    if (e.target === sheet || e.target.closest(".sheet-close")) { sheet.hidden = true; return; }
-    var item = e.target.closest("[data-action]");
-    if (!item) return;
-    var action = item.dataset.action;
-    sheet.hidden = true;
-    if (action === "copyPrev") copyPrevious();
-    else if (action === "export") exportData();
-    else if (action === "import") document.getElementById("importFile").click();
-    else if (action === "clearMonth") clearMonth();
-  });
-
+  /* ---------- Menu actions (wired from the sidebar) ---------- */
   function copyPrevious() {
     var prevKey = shiftMonth(state.selected, -1);
     var prev = state.months[prevKey];
