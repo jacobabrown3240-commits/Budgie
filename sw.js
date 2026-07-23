@@ -2,7 +2,7 @@
    Network-first: when online, always serve the freshest files (so deploys
    show up without a hard refresh) and keep the cache updated as a fallback;
    when offline, serve the last-cached copy. */
-var CACHE = "budgie-v2";
+var CACHE = "budgie-v3";
 var ASSETS = [
   ".",
   "index.html",
@@ -31,7 +31,10 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    // {cache:"no-store"} bypasses the browser HTTP cache so a freshly deployed
+    // file is never masked by a still-valid cached copy (the cause of a mixed
+    // old-JS / new-HTML load). Offline falls back to the cache below.
+    fetch(e.request, { cache: "no-store" }).then(function (res) {
       // Refresh the cache with the latest successful same-origin response.
       if (res && res.ok) {
         var copy = res.clone();
