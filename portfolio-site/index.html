@@ -8,7 +8,14 @@
   <!--  EDIT ME:  Your name / brand, and the one-line description.   -->
   <!-- ============================================================= -->
   <title>Jacob Brown — IT Services &amp; Portfolio</title>
-  <meta name="description" content="Friendly, reliable IT help and a portfolio of projects. Device setup, troubleshooting, networking, and simple websites." />
+  <meta name="description" content="Certified IT technician — custom PC builds, phone repair, and diagnostics. Friendly service, explained in plain English." />
+
+  <!-- Social / link-preview image -->
+  <meta property="og:title" content="Jacob Brown — Certified IT Technician" />
+  <meta property="og:description" content="Custom PC builds, phone repair, and diagnostics. Friendly service, explained in plain English." />
+  <meta property="og:image" content="https://jacobabrown3240-commits.github.io/Portfolio/assets/pc-build.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
 
   <meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
@@ -43,18 +50,24 @@
     <!-- Hero -->
     <section class="hero">
       <div class="wrap hero-inner">
-        <p class="eyebrow">Certified IT technician · PC builds · phone repair</p>
-        <h1>Tech that just&nbsp;works &mdash;<br />without the jargon.</h1>
-        <p class="lede">
-          Hi, I&rsquo;m Jacob &mdash; a CompTIA-, Microsoft-, and TestOut-certified
-          IT technician. I build custom computers, repair phones, and diagnose
-          the tech problems that leave you stuck &mdash; with friendly service,
-          explained in plain English.
-        </p>
-        <div class="hero-actions">
-          <a href="#contact" class="btn btn-primary">Get in touch</a>
-          <a href="#portfolio" class="btn btn-ghost">See my work</a>
+        <div class="hero-text">
+          <p class="eyebrow">Certified IT technician · PC builds · phone repair</p>
+          <h1>Tech that just&nbsp;works &mdash;<br />without the jargon.</h1>
+          <p class="lede">
+            Hi, I&rsquo;m Jacob &mdash; a CompTIA-, Microsoft-, and TestOut-certified
+            IT technician. I build custom computers, repair phones, and diagnose
+            the tech problems that leave you stuck &mdash; with friendly service,
+            explained in plain English.
+          </p>
+          <div class="hero-actions">
+            <a href="#contact" class="btn btn-primary">Get in touch</a>
+            <a href="#portfolio" class="btn btn-ghost">See my work</a>
+          </div>
         </div>
+        <figure class="hero-media">
+          <img src="assets/pc-build.jpg"
+               alt="Custom white gaming PC built by Jacob — tempered-glass case, Gigabyte GeForce RTX graphics card, and triple RGB cooling fans" />
+        </figure>
       </div>
     </section>
 
@@ -200,9 +213,8 @@
         <p class="kicker">Portfolio</p>
         <h2>Recent projects</h2>
         <p class="section-lede">
-          These are placeholders &mdash; swap in your real projects as you go.
-          Each card links out (edit the <code>href</code> in
-          <code>index.html</code>).
+          A look at some recent work &mdash; with more to come as I take on
+          new builds and repairs.
         </p>
 
         <!-- ============================================================= -->
@@ -210,11 +222,13 @@
         <!-- ============================================================= -->
         <div class="projects">
           <a class="project" href="#" aria-label="Project one">
-            <div class="project-thumb" data-tag="Build">01</div>
+            <div class="project-thumb has-img" data-tag="Build">
+              <img src="assets/pc-build.jpg" alt="Custom white RGB gaming PC with tempered glass, RTX graphics card, and triple cooling fans" />
+            </div>
             <div class="project-body">
               <h3>Custom gaming PC build</h3>
-              <p>Specced and assembled a mid-range gaming rig to a set budget — cable-managed and stress-tested.</p>
-              <ul class="tags"><li>PC build</li><li>Windows setup</li><li>Testing</li></ul>
+              <p>A white-themed RGB build with tempered glass, an RTX graphics card, and a triple-fan cooling setup — cable-managed and stress-tested.</p>
+              <ul class="tags"><li>PC build</li><li>Water/air cooling</li><li>RGB</li></ul>
             </div>
           </a>
 
