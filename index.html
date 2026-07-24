@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -44,6 +44,11 @@
           <div id="planChart" class="chart"></div>
         </div>
 
+        <div class="card" id="planTypeCard">
+          <div class="card-head"><h2>By type</h2><span class="card-sub">the kakeibo way</span></div>
+          <div id="planTypes"></div>
+        </div>
+
         <div class="card">
           <div class="card-head"><h2>Income</h2><span class="card-sub" id="planIncomeTotal"></span></div>
           <div class="list" id="planIncomeList"></div>
@@ -83,6 +88,7 @@
                 <input class="amount" id="logAmount" inputmode="decimal" placeholder="0" /></span>
               <input class="log-note" id="logNote" placeholder="Note (e.g. Costco)" />
             </div>
+            <input class="log-date" id="logDate" type="date" aria-label="Date" />
             <button class="log-add-btn" id="logAddBtn">Add to Log</button>
           </div>
         </div>
@@ -109,6 +115,13 @@
           </div>
           <div id="historyChart" class="chart"></div>
         </div>
+        <div class="card" id="catTrendCard">
+          <div class="card-head">
+            <h2>By category</h2>
+            <select class="log-select mini" id="catTrendSel" aria-label="Category"></select>
+          </div>
+          <div id="catTrendChart" class="chart"></div>
+        </div>
         <div class="card">
           <div class="card-head"><h2>Month by month</h2></div>
           <div id="historyList" class="hist-list"></div>
@@ -130,6 +143,14 @@
         <div class="card">
           <div class="card-head"><h2>Category breakdown</h2></div>
           <div id="compareTable" class="cmp-table"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Monthly reflection</h2></div>
+          <div id="reflectionSummary" class="reflect-summary"></div>
+          <label class="reflect-label">What went well?</label>
+          <textarea class="reflect-input" id="reflectWell" rows="2" placeholder="e.g. packed lunch most days"></textarea>
+          <label class="reflect-label">How can you improve next month?</label>
+          <textarea class="reflect-input" id="reflectImprove" rows="2" placeholder="e.g. cut a subscription"></textarea>
         </div>
       </section>
     </main>
@@ -160,21 +181,65 @@
         <button class="nav-item" data-view="log"><span class="nav-ico" data-ic="receipt"></span>Log</button>
       </div>
       <div class="drawer-sep"></div>
+      <button class="nav-item small" data-action="settings"><span class="nav-ico" data-ic="settings"></span>Settings</button>
       <button class="nav-item small" data-action="copyPrev"><span class="nav-ico" data-ic="copy"></span>Copy last month's plan</button>
-      <button class="nav-item small" data-action="export"><span class="nav-ico" data-ic="download"></span>Export backup</button>
+      <button class="nav-item small" data-action="export"><span class="nav-ico" data-ic="download"></span>Export backup (JSON)</button>
+      <button class="nav-item small" data-action="exportCsv"><span class="nav-ico" data-ic="receipt"></span>Export month (CSV)</button>
       <button class="nav-item small" data-action="import"><span class="nav-ico" data-ic="upload"></span>Import backup</button>
       <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico" data-ic="trash"></span>Clear this month</button>
     </nav>
   </div>
   <input type="file" id="importFile" accept="application/json" hidden />
 
-  <!-- Icon picker sheet -->
+  <!-- Edit-category sheet (icon + kakeibo type) -->
   <div class="sheet-backdrop" id="iconSheet" hidden>
-    <div class="sheet" role="dialog" aria-label="Choose an icon">
+    <div class="sheet" role="dialog" aria-label="Edit category">
       <div class="sheet-handle"></div>
-      <div class="sheet-title">Choose an icon</div>
+      <div class="sheet-title" id="groupPickTitle" hidden>Type</div>
+      <div class="seg" id="groupPick" hidden></div>
+      <div class="sheet-title">Icon</div>
       <div class="icon-grid" id="iconGrid"></div>
       <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+
+  <!-- Log entry sheet (add with date / edit) -->
+  <div class="sheet-backdrop" id="entrySheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Edit entry">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" id="entryTitle">Edit entry</div>
+      <select class="log-select" id="entryCat" aria-label="Category"></select>
+      <div class="log-add-row">
+        <span class="amount-field big"><span class="cur">$</span>
+          <input class="amount" id="entryAmount" inputmode="decimal" placeholder="0" /></span>
+        <input class="log-note" id="entryNote" placeholder="Note" />
+      </div>
+      <input class="log-date" id="entryDate" type="date" aria-label="Date" />
+      <button class="log-add-btn" id="entrySave">Save</button>
+      <button class="sheet-item danger" id="entryDelete">Delete entry</button>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+
+  <!-- Settings sheet -->
+  <div class="sheet-backdrop" id="settingsSheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Settings">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Theme</div>
+      <div class="seg" id="themePick"></div>
+      <div class="sheet-title">App lock</div>
+      <div id="lockControls"></div>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+
+  <!-- PIN lock overlay -->
+  <div class="lock" id="lockScreen" hidden>
+    <div class="lock-inner">
+      <span class="lock-logo" data-ic="logo"></span>
+      <div class="lock-title" id="lockTitle">Enter PIN</div>
+      <div class="lock-dots" id="lockDots"></div>
+      <div class="lock-pad" id="lockPad"></div>
     </div>
   </div>
 

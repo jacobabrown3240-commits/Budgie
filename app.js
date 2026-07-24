@@ -25,13 +25,36 @@
         row("Savings", 0),
         row("Other", 0)
       ],
-      log: []
+      log: [],
+      reflection: { wentWell: "", improve: "" }
     };
   }
   function row(name, planned, icon) {
-    return { id: uid(), name: name, planned: planned, actual: null, icon: icon || null };
+    return { id: uid(), name: name, planned: planned, actual: null, icon: icon || null, group: null };
   }
   function uid() { return Math.random().toString(36).slice(2, 9); }
+
+  /* ---------- Kakeibo groups (Needs / Wants / Culture / Extra) ---------- */
+  var GROUPS = [
+    { key: "needs",   label: "Needs",   sub: "Survival",   color: "--s1" },
+    { key: "wants",   label: "Wants",   sub: "Optional",   color: "--s2" },
+    { key: "culture", label: "Culture", sub: "Enrichment", color: "--s3" },
+    { key: "extra",   label: "Extra",   sub: "Unexpected", color: "--s7" }
+  ];
+  var GROUP_MAP = {};
+  GROUPS.forEach(function (g) { GROUP_MAP[g.key] = g; });
+  var GROUP_RULES = [
+    [/rent|mortgage|housing|grocer|food|util|electric|water|gas|fuel|transport|car|bus|train|insur|health|medical|meds|pharmacy|phone|internet|wifi|debt|loan|childcare|daycare/i, "needs"],
+    [/book|movie|cinema|concert|museum|music|educat|school|tuition|course|class|hobby|gym|fitness|sport/i, "culture"],
+    [/dining|restaurant|coffee|cafe|shop|clothe|subscri|stream|netflix|spotify|beauty|salon|game|entertain|bar|drinks|takeout|lunch|dinner/i, "wants"],
+    [/gift|donat|charity|repair|emergency|misc|other|pet|travel|vacation|flight|hotel/i, "extra"]
+  ];
+  function groupFor(name) {
+    var n = String(name || "");
+    for (var i = 0; i < GROUP_RULES.length; i++) if (GROUP_RULES[i][0].test(n)) return GROUP_RULES[i][1];
+    return "needs";
+  }
+  function rowGroup(r) { return (r.group && GROUP_MAP[r.group]) ? r.group : groupFor(r.name); }
 
   /* ---------- Icons (clean monochrome line set) ---------- */
   // 24x24 viewBox, stroked with currentColor. Keys are stable identifiers used
@@ -79,6 +102,9 @@
     download:  '<path d="M12 3.5v11M8 10.5l4 4 4-4"/><path d="M4.5 20h15"/>',
     upload:    '<path d="M12 14.5v-11M8 7.5l4-4 4 4"/><path d="M4.5 20h15"/>',
     trash:     '<path d="M4.5 6.5h15M9 6.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v1.5M6.5 6.5 7.5 20a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13.5M10 10.5v6M14 10.5v6"/>',
+    settings:  '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 7l2.6 1.5M17.2 15.5 19.8 17M4.2 17l2.6-1.5M17.2 8.5 19.8 7M2.5 12h3M18.5 12h3"/>',
+    lock:      '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    backspace: '<path d="M9 5.5 3.5 12 9 18.5h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M12.5 9.5l4 5M16.5 9.5l-4 5"/>',
     logo:      '<path d="M5 20V11M12 20V4M19 20v-6"/>'
   };
   function svgIcon(key, extra) {
@@ -147,8 +173,11 @@
   /* ---------- State ---------- */
   var state = load();
   if (!state.months) state.months = {};
+  if (!state.settings) state.settings = {};
+  if (!state.settings.theme) state.settings.theme = "dark"; // dark by default
+  if (typeof state.settings.pin === "undefined") state.settings.pin = null;
   if (!state.selected) state.selected = monthKey(new Date());
-  if (!state.months[state.selected]) state.months[state.selected] = defaultMonth();
+  ensureMonth(state.selected);
 
   var currentView = "plan";
 
@@ -160,10 +189,37 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     catch (e) { /* storage full / private mode — ignore */ }
   }
-  function month() {
-    if (!state.months[state.selected]) state.months[state.selected] = defaultMonth();
-    return state.months[state.selected];
+  // Create a month if missing: seed a fresh month from the most recent prior
+  // month's plan (names/amounts/icons/groups, actuals cleared) so recurring
+  // budgets carry forward automatically. Falls back to the default template.
+  function ensureMonth(key) {
+    if (state.months[key]) { normalizeMonth(state.months[key]); return state.months[key]; }
+    var prevKey = mostRecentBefore(key);
+    if (prevKey) {
+      var prev = state.months[prevKey];
+      state.months[key] = {
+        income: prev.income.map(function (r) { return carry(r); }),
+        expenses: prev.expenses.map(function (r) { return carry(r); }),
+        log: [],
+        reflection: { wentWell: "", improve: "" }
+      };
+    } else {
+      state.months[key] = defaultMonth();
+    }
+    return state.months[key];
   }
+  function carry(r) {
+    return { id: uid(), name: r.name, planned: r.planned, actual: null, icon: r.icon || null, group: r.group || null };
+  }
+  function mostRecentBefore(key) {
+    var keys = Object.keys(state.months).filter(function (k) { return k < key; }).sort();
+    return keys.length ? keys[keys.length - 1] : null;
+  }
+  function normalizeMonth(m) {
+    if (!m.log) m.log = [];
+    if (!m.reflection) m.reflection = { wentWell: "", improve: "" };
+  }
+  function month() { return ensureMonth(state.selected); }
 
   /* ---------- Date helpers ---------- */
   function monthKey(d) {
@@ -253,6 +309,7 @@
 
     document.getElementById("planChartSub").textContent = money(expenses) + " planned";
     renderDonut(document.getElementById("planChart"), m.expenses, "planned", expenses);
+    renderPlanTypes(m);
   }
 
   /* ---------- ACTUAL ---------- */
@@ -301,6 +358,7 @@
 
     renderCompareChart(m);
     renderCompareTable(m);
+    renderReflection(m, aIncome, aExp);
   }
 
   function deltaLabel(delta, higherIsGood) {
@@ -390,6 +448,14 @@
       if (delta === 0) { dcls = "good"; dtext = "on plan"; }
       else if (delta > 0) { dcls = "over"; dtext = money(delta) + " over"; }
       else { dcls = "good"; dtext = money(-delta) + " under"; }
+      // vs last month
+      var prev = prevMonthActual(r.name);
+      var vsLast = "";
+      if (prev != null) {
+        var d2 = Math.round(a - prev);
+        if (d2 === 0) vsLast = '<span class="cmp-vs">— same as last month</span>';
+        else vsLast = '<span class="cmp-vs ' + (d2 > 0 ? "up" : "down") + '">' + (d2 > 0 ? "▲ " : "▼ ") + money(Math.abs(d2)) + ' vs last mo</span>';
+      }
       return '' +
         '<div class="cmp-row">' +
           '<div class="cmp-top">' +
@@ -401,6 +467,7 @@
             '<div class="cmp-bar-track"><div class="cmp-bar-fill a" style="width:' + pct(a, max) + '%"></div></div>' +
           '</div>' +
           '<div class="cmp-nums"><span>Planned ' + money(p) + '</span><span>Actual ' + money(a) + '</span></div>' +
+          vsLast +
         '</div>';
     }).join("");
   }
@@ -442,8 +509,10 @@
       subEl.textContent = "";
       chartEl.innerHTML = emptyMsg("Once you plan and track a month, your history builds here.");
       listEl.innerHTML = "";
+      document.getElementById("catTrendCard").hidden = true;
       return;
     }
+    renderCatTrend(keys);
 
     var logged = keys.filter(function (k) { return monthTotals(state.months[k]).hasActual; });
     var totalSaved = logged.reduce(function (t, k) { return t + monthTotals(state.months[k]).net; }, 0);
@@ -545,12 +614,14 @@
     // Category <select> — remember the last-used category.
     var sel = document.getElementById("logCat");
     var opts = m.expenses.map(function (r) {
-      return '<option value="' + r.id + '">' + rowIcon(r, "expense") + "  " + esc(r.name) + "</option>";
+      return '<option value="' + r.id + '">' + esc(r.name) + "</option>";
     }).join("");
     sel.innerHTML = opts;
     if (state.lastLogCat && m.expenses.some(function (r) { return r.id === state.lastLogCat; })) {
       sel.value = state.lastLogCat;
     }
+    var dateEl = document.getElementById("logDate");
+    if (!dateEl.value) dateEl.value = isoToday();
 
     // Summary strip.
     var total = entries.reduce(function (t, e) { return t + (Number(e.amount) || 0); }, 0);
@@ -599,14 +670,13 @@
       var dateStr = d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
       var label = e.note ? esc(e.note) : esc(catName);
       var subline = (e.note ? esc(catName) + " · " : "") + dateStr;
-      return '<div class="logrow" data-eid="' + e.id + '">' +
+      return '<div class="logrow" data-eid="' + e.id + '" data-editentry="' + e.id + '">' +
           '<span class="logrow-ico">' + svgIcon(icon) + '</span>' +
           '<div class="logrow-main">' +
             '<span class="logrow-label">' + label + '</span>' +
             '<span class="logrow-sub">' + subline + '</span>' +
           '</div>' +
           '<span class="logrow-amt">' + money(e.amount) + '</span>' +
-          '<button class="del" data-delentry="1" aria-label="Delete entry">&times;</button>' +
         '</div>';
     }).join("");
   }
@@ -616,10 +686,11 @@
     var sel = document.getElementById("logCat");
     var amtInput = document.getElementById("logAmount");
     var noteInput = document.getElementById("logNote");
+    var dateInput = document.getElementById("logDate");
     var catId = sel.value;
     var amount = parseFloat(String(amtInput.value).replace(/[^0-9.]/g, ""));
     if (!catId || !amount || amount <= 0) { toast("Enter an amount and pick a category."); return; }
-    monthLog(m).push({ id: uid(), catId: catId, amount: amount, note: noteInput.value.trim(), ts: Date.now() });
+    monthLog(m).push({ id: uid(), catId: catId, amount: amount, note: noteInput.value.trim(), ts: tsFromDate(dateInput.value) });
     state.lastLogCat = catId;
     amtInput.value = "";
     noteInput.value = "";
@@ -731,13 +802,16 @@
         '<span class="amount-field"><span class="cur">$</span>' +
         '<input class="amount" inputmode="decimal" data-field="actual" value="' + amtVal(r.actual) + '" placeholder="' + planned + '" /></span>';
     }
+    var quick = type === "expense"
+      ? '<button class="quick-log" data-quicklog="' + r.id + '" aria-label="Log a purchase">+</button>'
+      : '';
     return '' +
       '<div class="row" data-type="' + type + '" data-i="' + i + '">' +
         iconBadgeBtn(r, type, color) +
         '<span class="name" style="opacity:.95">' + esc(r.name) +
           '<span style="display:block;font-size:11px;color:var(--muted)">' + sub + '</span>' +
         '</span>' +
-        amountCell +
+        amountCell + quick +
       '</div>';
   }
   function amtVal(v) { return v == null || v === "" ? "" : String(v); }
@@ -786,8 +860,10 @@
       closeDrawer();
       if (action === "copyPrev") copyPrevious();
       else if (action === "export") exportData();
+      else if (action === "exportCsv") exportCsv();
       else if (action === "import") document.getElementById("importFile").click();
       else if (action === "clearMonth") clearMonth();
+      else if (action === "settings") openSettings();
     }
   });
   // Primary views live on the bottom bar.
@@ -812,13 +888,16 @@
   document.getElementById("nextMonth").addEventListener("click", function () { changeMonth(1); });
   function changeMonth(delta) {
     state.selected = shiftMonth(state.selected, delta);
-    if (!state.months[state.selected]) state.months[state.selected] = defaultMonth();
+    ensureMonth(state.selected);
     save(); render();
   }
 
   // Delegated input handling (name + amount edits)
   document.getElementById("content").addEventListener("input", function (e) {
     var input = e.target;
+    // Monthly reflection notes
+    if (input.id === "reflectWell") { month().reflection.wentWell = input.value; save(); return; }
+    if (input.id === "reflectImprove") { month().reflection.improve = input.value; save(); return; }
     if (!input.classList.contains("name") && !input.classList.contains("amount")) return;
     var rowEl = input.closest(".row");
     if (!rowEl) return;
@@ -847,26 +926,21 @@
       openIconPicker(pr.dataset.type, parseInt(pr.dataset.i, 10));
       return;
     }
-    // Add a log entry
+    // Add a log entry (main form)
     if (e.target.closest("#logAddBtn")) { addLogEntry(); return; }
-    // Delete a log entry
-    var delEntry = e.target.closest("[data-delentry]");
-    if (delEntry) {
-      var eid = delEntry.closest(".logrow").dataset.eid;
-      var lg = monthLog(month());
-      for (var li = 0; li < lg.length; li++) {
-        if (lg[li].id === eid) { lg.splice(li, 1); break; }
-      }
-      save(); render();
-      return;
-    }
+    // Quick-log a purchase straight from an Actual expense row
+    var quick = e.target.closest("[data-quicklog]");
+    if (quick) { openEntrySheet("add", { catId: quick.dataset.quicklog }); return; }
+    // Tap a log entry to edit it
+    var editEntry = e.target.closest("[data-editentry]");
+    if (editEntry) { openEntrySheet("edit", { id: editEntry.dataset.editentry }); return; }
     // Tapping a tracked (read-only) actual jumps to the Log
     if (e.target.closest("[data-gotolog]")) { switchView("log"); return; }
     // Jump to a month from history
     var go = e.target.closest("[data-gomonth]");
     if (go) {
       state.selected = go.dataset.gomonth;
-      if (!state.months[state.selected]) state.months[state.selected] = defaultMonth();
+      ensureMonth(state.selected);
       save();
       switchView("compare");
       render();
@@ -993,16 +1067,38 @@
       return '<button class="icon-opt" data-icon="' + ic + '">' + svgIcon(ic) + '</button>';
     }).join("");
 
+  function currentPickRec() {
+    if (!pickTarget) return null;
+    var list = pickTarget.type === "income" ? month().income : month().expenses;
+    return list[pickTarget.index] || null;
+  }
+  function renderGroupPick() {
+    var rec = currentPickRec();
+    var showGroup = pickTarget && pickTarget.type === "expense" && rec;
+    document.getElementById("groupPick").hidden = !showGroup;
+    document.getElementById("groupPickTitle").hidden = !showGroup;
+    if (!showGroup) return;
+    var active = rowGroup(rec);
+    document.getElementById("groupPick").innerHTML = GROUPS.map(function (g) {
+      return '<button class="seg-btn' + (g.key === active ? " on" : "") + '" data-group="' + g.key + '">' + g.label + "</button>";
+    }).join("");
+  }
   function openIconPicker(type, index) {
     pickTarget = { type: type, index: index };
+    renderGroupPick();
     iconSheet.hidden = false;
   }
   iconSheet.addEventListener("click", function (e) {
     if (e.target === iconSheet || e.target.closest(".sheet-close")) { iconSheet.hidden = true; return; }
+    var grp = e.target.closest("[data-group]");
+    if (grp) {
+      var recg = currentPickRec();
+      if (recg) { recg.group = grp.dataset.group; save(); render(); renderGroupPick(); }
+      return;
+    }
     var opt = e.target.closest("[data-icon]");
     if (!opt || !pickTarget) return;
-    var list = pickTarget.type === "income" ? month().income : month().expenses;
-    var rec = list[pickTarget.index];
+    var rec = currentPickRec();
     if (rec) {
       var chosen = opt.dataset.icon;
       rec.icon = chosen === "__auto__" ? null : chosen;
@@ -1073,16 +1169,314 @@
     toastTimer = setTimeout(function () { t.style.opacity = "0"; }, 2200);
   }
 
+  /* ============================================================
+     SETTINGS · PIN LOCK · CSV · REFLECTION · GROUPS · ENTRY EDIT
+     ============================================================ */
+
+  /* ---------- PIN lock ---------- */
+  function hashPin(s) {
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) { h = ((h << 5) + h) + s.charCodeAt(i); h |= 0; }
+    return "h" + (h >>> 0);
+  }
+  var lockMode = "verify", lockEntry = "", lockFirst = "", lockStage = 0;
+  function maybeLock() { if (state.settings.pin) showLock("verify"); }
+  function showLock(mode) {
+    lockMode = mode; lockEntry = ""; lockFirst = "";
+    lockStage = mode === "verify" ? 0 : 1;
+    document.getElementById("lockScreen").hidden = false;
+    renderLockPad();
+    refreshLock();
+  }
+  function hideLock() { document.getElementById("lockScreen").hidden = true; }
+  function renderLockPad() {
+    var keys = ["1","2","3","4","5","6","7","8","9","","0","del"];
+    document.getElementById("lockPad").innerHTML = keys.map(function (k) {
+      if (k === "") return "<span></span>";
+      if (k === "del") return '<button class="lock-key ghost" data-k="del" aria-label="Delete">' + svgIcon("backspace") + "</button>";
+      return '<button class="lock-key" data-k="' + k + '">' + k + "</button>";
+    }).join("");
+  }
+  function refreshLock() {
+    document.getElementById("lockTitle").textContent =
+      lockMode === "verify" ? "Enter PIN" : (lockStage === 1 ? "Create a PIN" : "Confirm PIN");
+    var dots = "";
+    for (var i = 0; i < 4; i++) dots += '<span class="lock-dot' + (i < lockEntry.length ? " on" : "") + '"></span>';
+    document.getElementById("lockDots").innerHTML = dots;
+  }
+  function shakeLock() {
+    var el = document.querySelector("#lockScreen .lock-inner");
+    if (!el) return;
+    el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+  }
+  function onPinComplete() {
+    if (lockMode === "verify") {
+      if (hashPin(lockEntry) === state.settings.pin) { hideLock(); }
+      else { shakeLock(); lockEntry = ""; refreshLock(); document.getElementById("lockTitle").textContent = "Wrong PIN"; }
+      return;
+    }
+    if (lockStage === 1) { lockFirst = lockEntry; lockEntry = ""; lockStage = 2; refreshLock(); return; }
+    if (lockEntry === lockFirst) {
+      state.settings.pin = hashPin(lockEntry); save(); hideLock(); toast("PIN set.");
+      renderLockControls();
+    } else {
+      shakeLock(); lockEntry = ""; lockFirst = ""; lockStage = 1; refreshLock();
+      document.getElementById("lockTitle").textContent = "Didn't match — retry";
+    }
+  }
+  document.getElementById("lockPad").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-k]"); if (!b) return;
+    var k = b.dataset.k;
+    if (k === "del") { lockEntry = lockEntry.slice(0, -1); refreshLock(); return; }
+    if (lockEntry.length >= 4) return;
+    lockEntry += k; refreshLock();
+    if (lockEntry.length === 4) setTimeout(onPinComplete, 130);
+  });
+
+  /* ---------- Settings sheet ---------- */
+  var settingsSheet = document.getElementById("settingsSheet");
+  function openSettings() { renderThemePick(); renderLockControls(); settingsSheet.hidden = false; }
+  function renderThemePick() {
+    var opts = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
+    document.getElementById("themePick").innerHTML = opts.map(function (o) {
+      return '<button class="seg-btn' + (state.settings.theme === o[0] ? " on" : "") + '" data-settheme="' + o[0] + '">' + o[1] + "</button>";
+    }).join("");
+  }
+  function renderLockControls() {
+    var el = document.getElementById("lockControls");
+    if (state.settings.pin) {
+      el.innerHTML = '<button class="sheet-item" data-lock="change">Change PIN</button>' +
+                     '<button class="sheet-item danger" data-lock="remove">Remove PIN</button>';
+    } else {
+      el.innerHTML = '<button class="sheet-item" data-lock="set">Set a PIN</button>' +
+                     '<p class="reflect-note">A passcode to open the app on this device. It is a casual lock, not encryption.</p>';
+    }
+  }
+  settingsSheet.addEventListener("click", function (e) {
+    if (e.target === settingsSheet || e.target.closest(".sheet-close")) { settingsSheet.hidden = true; return; }
+    var th = e.target.closest("[data-settheme]");
+    if (th) { setTheme(th.dataset.settheme); renderThemePick(); return; }
+    var lk = e.target.closest("[data-lock]");
+    if (lk) {
+      var a = lk.dataset.lock;
+      if (a === "set" || a === "change") { settingsSheet.hidden = true; showLock(a === "set" ? "set" : "change"); }
+      else if (a === "remove") { state.settings.pin = null; save(); renderLockControls(); toast("PIN removed."); }
+    }
+  });
+
+  /* ---------- CSV export ---------- */
+  function downloadBlob(content, filename, type) {
+    var blob = new Blob([content], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function exportCsv() {
+    var m = month();
+    var rows = [["Type", "Category", "Group", "Planned", "Actual"]];
+    m.income.forEach(function (r) { rows.push(["Income", r.name, "", Number(r.planned) || 0, actualOr(r)]); });
+    m.expenses.forEach(function (r) { rows.push(["Expense", r.name, GROUP_MAP[rowGroup(r)].label, Number(r.planned) || 0, expenseActualOf(m, r)]); });
+    rows.push([]);
+    rows.push(["Log date", "Category", "Amount", "Note", ""]);
+    monthLog(m).slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }).forEach(function (en) {
+      var cat = m.expenses.filter(function (r) { return r.id === en.catId; })[0];
+      rows.push([en.ts ? new Date(en.ts).toISOString().slice(0, 10) : "", cat ? cat.name : "", en.amount, en.note || "", ""]);
+    });
+    var csv = rows.map(function (r) { return r.map(csvCell).join(","); }).join("\n");
+    downloadBlob(csv, "kakeibo-" + state.selected + ".csv", "text/csv");
+  }
+
+  /* ---------- Kakeibo "by type" breakdown ---------- */
+  function renderPlanTypes(m) {
+    var el = document.getElementById("planTypes");
+    var totals = { needs: 0, wants: 0, culture: 0, extra: 0 };
+    m.expenses.forEach(function (r) { totals[rowGroup(r)] += Number(r.planned) || 0; });
+    var sum = totals.needs + totals.wants + totals.culture + totals.extra;
+    if (sum <= 0) { el.innerHTML = emptyMsg("Set expense amounts to see your Needs / Wants / Culture / Extra split."); return; }
+    var bar = '<div class="type-bar">' + GROUPS.map(function (g) {
+      var v = totals[g.key]; if (v <= 0) return "";
+      return '<span style="width:' + (v / sum * 100) + '%;background:' + css(g.color) + '"></span>';
+    }).join("") + "</div>";
+    var legend = GROUPS.map(function (g) {
+      var v = totals[g.key];
+      return '<div class="type-row">' +
+        '<span class="type-dot" style="background:' + css(g.color) + '"></span>' +
+        '<span class="type-name">' + g.label + '<span class="type-sub"> · ' + g.sub + '</span></span>' +
+        '<span class="type-val">' + money(v) + '</span>' +
+        '<span class="type-pct">' + Math.round(v / sum * 100) + '%</span>' +
+      '</div>';
+    }).join("");
+    el.innerHTML = bar + '<div class="type-legend">' + legend + '</div>';
+  }
+
+  /* ---------- Monthly reflection ---------- */
+  function renderReflection(m, aIncome, aExp) {
+    var net = aIncome - aExp;
+    document.getElementById("reflectionSummary").innerHTML =
+      '<span>Had <b>' + money(aIncome) + '</b></span>' +
+      '<span>Spent <b>' + money(aExp) + '</b></span>' +
+      '<span class="' + (net >= 0 ? "good" : "over") + '">Saved <b>' + signedMoney(net) + '</b></span>';
+    document.getElementById("reflectWell").value = m.reflection.wentWell || "";
+    document.getElementById("reflectImprove").value = m.reflection.improve || "";
+  }
+
+  /* ---------- Category trend (History) ---------- */
+  function allCategoryNames() {
+    var names = {}, order = [];
+    Object.keys(state.months).forEach(function (k) {
+      state.months[k].expenses.forEach(function (r) {
+        if (!names[r.name]) { names[r.name] = true; order.push(r.name); }
+      });
+    });
+    return order;
+  }
+  function renderCatTrend(keys) {
+    var sel = document.getElementById("catTrendSel");
+    var names = allCategoryNames();
+    var card = document.getElementById("catTrendCard");
+    if (!names.length || keys.length < 1) { card.hidden = true; return; }
+    card.hidden = false;
+    sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
+    if (state.catTrend && names.indexOf(state.catTrend) >= 0) sel.value = state.catTrend;
+    else state.catTrend = sel.value;
+    var target = sel.value;
+    var pts = keys.map(function (k) {
+      var m = state.months[k];
+      var r = m.expenses.filter(function (x) { return x.name === target; })[0];
+      return { k: k, val: r ? expenseActualOf(m, r) : 0 };
+    });
+    renderBars(document.getElementById("catTrendChart"), pts, css("--actual"));
+  }
+  function renderBars(el, pts, color) {
+    if (!pts.length) { el.innerHTML = emptyMsg("No data yet."); return; }
+    var max = Math.max.apply(null, pts.map(function (p) { return p.val; }).concat([1]));
+    var W = 320, H = 130, padB = 22, padT = 16, n = pts.length;
+    var gap = 8, bw = (W - gap * (n - 1)) / n, muted = css("--muted");
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="By month">';
+    pts.forEach(function (p, i) {
+      var x = i * (bw + gap);
+      var h = (H - padB - padT) * (p.val / max);
+      var y = H - padB - h;
+      s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + color + '"/>';
+      if (p.val > 0) s += '<text x="' + (x + bw / 2) + '" y="' + (y - 5) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + money(p.val) + '</text>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (H - 7) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + keyToDate(p.k).toLocaleDateString(undefined, { month: "short" }) + '</text>';
+    });
+    s += "</svg>";
+    el.innerHTML = s;
+  }
+  document.getElementById("catTrendSel").addEventListener("change", function () {
+    state.catTrend = this.value; save();
+    var keys = Object.keys(state.months).filter(function (k) { return hasData(state.months[k]); }).sort();
+    renderCatTrend(keys);
+  });
+
+  /* ---------- Previous-month actual for a category (vs last month) ---------- */
+  function prevMonthActual(catName) {
+    var prevKey = mostRecentBefore(state.selected);
+    if (!prevKey) return null;
+    var pm = state.months[prevKey];
+    var r = pm.expenses.filter(function (x) { return x.name === catName; })[0];
+    return r ? expenseActualOf(pm, r) : null;
+  }
+
+  /* ---------- Log entry add/edit sheet ---------- */
+  var entrySheet = document.getElementById("entrySheet");
+  var entryEditId = null;
+  function fillEntryCats() {
+    var m = month();
+    document.getElementById("entryCat").innerHTML = m.expenses.map(function (r) {
+      return '<option value="' + r.id + '">' + esc(r.name) + "</option>";
+    }).join("");
+  }
+  function isoToday() { return new Date().toISOString().slice(0, 10); }
+  function tsFromDate(str) {
+    if (!str) return Date.now();
+    var p = str.split("-");
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 12, 0, 0).getTime();
+  }
+  function openEntrySheet(mode, opts) {
+    fillEntryCats();
+    document.getElementById("entryTitle").textContent = mode === "edit" ? "Edit entry" : "Add a purchase";
+    document.getElementById("entryDelete").hidden = mode !== "edit";
+    if (mode === "edit") {
+      entryEditId = opts.id;
+      var e = monthLog(month()).filter(function (x) { return x.id === opts.id; })[0];
+      if (!e) return;
+      document.getElementById("entryCat").value = e.catId;
+      document.getElementById("entryAmount").value = e.amount;
+      document.getElementById("entryNote").value = e.note || "";
+      document.getElementById("entryDate").value = e.ts ? new Date(e.ts).toISOString().slice(0, 10) : isoToday();
+    } else {
+      entryEditId = null;
+      if (opts && opts.catId) document.getElementById("entryCat").value = opts.catId;
+      document.getElementById("entryAmount").value = "";
+      document.getElementById("entryNote").value = "";
+      document.getElementById("entryDate").value = isoToday();
+    }
+    entrySheet.hidden = false;
+    setTimeout(function () { document.getElementById("entryAmount").focus(); }, 60);
+  }
+  entrySheet.addEventListener("click", function (e) {
+    if (e.target === entrySheet || e.target.closest(".sheet-close")) { entrySheet.hidden = true; return; }
+    if (e.target.closest("#entrySave")) { saveEntry(); return; }
+    if (e.target.closest("#entryDelete")) {
+      var lg = monthLog(month());
+      for (var i = 0; i < lg.length; i++) if (lg[i].id === entryEditId) { lg.splice(i, 1); break; }
+      save(); entrySheet.hidden = true; render();
+      return;
+    }
+  });
+  function saveEntry() {
+    var m = month();
+    var catId = document.getElementById("entryCat").value;
+    var amount = parseFloat(String(document.getElementById("entryAmount").value).replace(/[^0-9.]/g, ""));
+    var note = document.getElementById("entryNote").value.trim();
+    var ts = tsFromDate(document.getElementById("entryDate").value);
+    if (!catId || !amount || amount <= 0) { toast("Enter an amount and category."); return; }
+    if (entryEditId) {
+      var e = monthLog(m).filter(function (x) { return x.id === entryEditId; })[0];
+      if (e) { e.catId = catId; e.amount = amount; e.note = note; e.ts = ts; }
+    } else {
+      monthLog(m).push({ id: uid(), catId: catId, amount: amount, note: note, ts: ts });
+      state.lastLogCat = catId;
+    }
+    save(); entrySheet.hidden = true; render();
+  }
+
+  /* ---------- Theme ---------- */
+  function resolveTheme() {
+    var t = state.settings.theme;
+    if (t === "light" || t === "dark") return t;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  function applyTheme() {
+    var resolved = resolveTheme();
+    document.documentElement.setAttribute("data-theme", resolved);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", resolved === "dark" ? "#0a0c10" : "#eceef3");
+  }
+  function setTheme(t) {
+    state.settings.theme = t;
+    save(); applyTheme(); render();
+  }
+
   /* ---------- Boot ---------- */
+  applyTheme();
   // Fill static chrome icons (tab bar, sidebar) from the icon set.
   Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) {
     el.innerHTML = svgIcon(el.dataset.ic);
   });
+  maybeLock();
   render();
 
-  // Re-render on theme change so SVG colors update.
+  // Re-render / re-theme when the OS scheme changes (matters for "auto").
   if (window.matchMedia) {
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      applyTheme(); render();
+    });
   }
 
   // Register service worker for offline use, and auto-refresh when a newer
