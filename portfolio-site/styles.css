@@ -253,15 +253,17 @@ code {
   transition: transform .15s ease, box-shadow .15s;
 }
 .cert:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-.cert-year {
+.cert-badge {
   flex: none;
-  font-size: .78rem;
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  font-size: .8rem;
   font-weight: 700;
   color: var(--accent-strong);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   border-radius: 999px;
-  padding: 4px 10px;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .cert h3 { font-size: 1rem; margin: 0 0 2px; }
 .cert p { margin: 0; color: var(--text-soft); font-size: .88rem; }
