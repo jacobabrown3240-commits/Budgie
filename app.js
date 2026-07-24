@@ -1025,10 +1025,20 @@
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
   }
 
-  // Register service worker for offline use.
+  // Register service worker for offline use, and auto-refresh when a newer
+  // version takes over (backs up the worker's own client.navigate()).
   if ("serviceWorker" in navigator) {
+    var swReloaded = false;
+    var hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (swReloaded || !hadController) return; // don't reload on first install
+      swReloaded = true;
+      window.location.reload();
+    });
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {});
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        reg.update();
+      }).catch(function () {});
     });
   }
 })();
