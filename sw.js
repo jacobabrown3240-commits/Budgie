@@ -2,7 +2,7 @@
    Network-first: when online, always serve the freshest files (so deploys
    show up without a hard refresh) and keep the cache updated as a fallback;
    when offline, serve the last-cached copy. */
-var CACHE = "budgie-v3";
+var CACHE = "budgie-v4";
 var ASSETS = [
   ".",
   "index.html",

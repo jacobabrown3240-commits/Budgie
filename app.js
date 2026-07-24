@@ -734,9 +734,14 @@
       else if (action === "clearMonth") clearMonth();
     }
   });
+  // Primary views live on the bottom bar.
+  document.getElementById("tabbar").addEventListener("click", function (e) {
+    var btn = e.target.closest(".tab");
+    if (btn) switchView(btn.dataset.view);
+  });
   function switchView(view) {
     currentView = view;
-    document.querySelectorAll(".nav-item[data-view]").forEach(function (t) {
+    document.querySelectorAll("[data-view]").forEach(function (t) {
       t.classList.toggle("is-active", t.dataset.view === view);
     });
     ["plan", "actual", "compare", "history", "log"].forEach(function (v) {
