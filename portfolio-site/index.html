@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- ============================================================= -->
+  <!--  EDIT ME:  Your name / brand, and the one-line description.   -->
+  <!-- ============================================================= -->
+  <title>Jacob Brown — IT Services &amp; Portfolio</title>
+  <meta name="description" content="Friendly, reliable IT help and a portfolio of projects. Device setup, troubleshooting, networking, and simple websites." />
+
+  <meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header / nav -->
+  <header class="site-header" id="top">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span>
+        <span class="brand-name">Jacob Brown</span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Primary">
+        <a href="#about">About</a>
+        <a href="#services">Services</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#contact" class="nav-cta">Contact</a>
+      </nav>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <p class="eyebrow">IT support &amp; simple web projects</p>
+        <h1>Tech that just&nbsp;works &mdash;<br />without the jargon.</h1>
+        <p class="lede">
+          Hi, I&rsquo;m Jacob. I help people and small businesses get their
+          computers, networks, and devices running smoothly &mdash; and I build
+          clean, no-nonsense websites. Learning fast, working hard, and happy
+          to help.
+        </p>
+        <div class="hero-actions">
+          <a href="#contact" class="btn btn-primary">Get in touch</a>
+          <a href="#portfolio" class="btn btn-ghost">See my work</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section id="about" class="section">
+      <div class="wrap">
+        <p class="kicker">About</p>
+        <h2>A bit about me</h2>
+        <div class="about-grid">
+          <div>
+            <p>
+              I&rsquo;m early in my IT journey and genuinely enjoy solving tech
+              problems &mdash; the kind of person friends and family call when
+              something won&rsquo;t connect, won&rsquo;t print, or won&rsquo;t
+              turn on. I&rsquo;m building this site to share the projects
+              I&rsquo;m working on and, over time, to offer proper services.
+            </p>
+            <p>
+              No certificates hanging on the wall (yet!). What I bring is
+              curiosity, patience, and a promise to explain things in plain
+              English rather than tech-speak.
+            </p>
+          </div>
+          <ul class="fact-list">
+            <li><span>Based in</span> <strong>Your city</strong></li>
+            <li><span>Focus</span> <strong>IT support &amp; web</strong></li>
+            <li><span>Availability</span> <strong>Evenings &amp; weekends</strong></li>
+            <li><span>Rate</span> <strong>Friendly / negotiable</strong></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services -->
+    <section id="services" class="section section-alt">
+      <div class="wrap">
+        <p class="kicker">What I can help with</p>
+        <h2>Services</h2>
+        <p class="section-lede">
+          Starting small and growing. Here&rsquo;s what I can take on today &mdash;
+          more coming as I learn.
+        </p>
+
+        <div class="cards">
+          <article class="card">
+            <div class="card-ico" aria-hidden="true">🛠️</div>
+            <h3>PC &amp; device help</h3>
+            <p>Setup, clean-ups, slow-computer fixes, software installs, and general troubleshooting.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-ico" aria-hidden="true">📶</div>
+            <h3>Home networking</h3>
+            <p>Wi-Fi that reaches every room, router setup, printers, and getting devices talking to each other.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-ico" aria-hidden="true">🌐</div>
+            <h3>Simple websites</h3>
+            <p>Clean, fast, mobile-friendly sites for small businesses and personal projects.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-ico" aria-hidden="true">💾</div>
+            <h3>Backups &amp; basics</h3>
+            <p>Setting up backups, password managers, and simple safeguards so nothing gets lost.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section id="portfolio" class="section">
+      <div class="wrap">
+        <p class="kicker">Portfolio</p>
+        <h2>Recent projects</h2>
+        <p class="section-lede">
+          These are placeholders &mdash; swap in your real projects as you go.
+          Each card links out (edit the <code>href</code> in
+          <code>index.html</code>).
+        </p>
+
+        <!-- ============================================================= -->
+        <!--  EDIT ME: Duplicate a .project block for each real project.    -->
+        <!-- ============================================================= -->
+        <div class="projects">
+          <a class="project" href="#" aria-label="Project one">
+            <div class="project-thumb" data-tag="Web">01</div>
+            <div class="project-body">
+              <h3>Small business website</h3>
+              <p>A one-page site for a local shop — fast, mobile-first, easy to update.</p>
+              <ul class="tags"><li>HTML</li><li>CSS</li><li>Responsive</li></ul>
+            </div>
+          </a>
+
+          <a class="project" href="#" aria-label="Project two">
+            <div class="project-thumb" data-tag="Network">02</div>
+            <div class="project-body">
+              <h3>Home network overhaul</h3>
+              <p>Reworked Wi-Fi coverage and reduced dead zones across a two-storey home.</p>
+              <ul class="tags"><li>Wi-Fi</li><li>Router</li><li>Mesh</li></ul>
+            </div>
+          </a>
+
+          <a class="project" href="#" aria-label="Project three">
+            <div class="project-thumb" data-tag="Repair">03</div>
+            <div class="project-body">
+              <h3>PC rescue &amp; tune-up</h3>
+              <p>Cleaned up a sluggish laptop, removed bloat, and got boot time way down.</p>
+              <ul class="tags"><li>Windows</li><li>Cleanup</li><li>Backup</li></ul>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="section section-alt">
+      <div class="wrap contact-inner">
+        <p class="kicker">Contact</p>
+        <h2>Let&rsquo;s talk</h2>
+        <p class="section-lede">
+          Got a problem to fix or a project in mind? Drop me a line &mdash; happy
+          to help however I can.
+        </p>
+        <div class="contact-actions">
+          <!-- EDIT ME: your real email -->
+          <a class="btn btn-primary" href="mailto:you@example.com">Email me</a>
+          <!-- EDIT ME: optional links (GitHub, LinkedIn, phone) -->
+          <a class="btn btn-ghost" href="https://github.com/jacobabrown3240-commits" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <span>&copy; <span id="year"></span> Jacob Brown</span>
+      <a href="#top" class="to-top">Back to top ↑</a>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
