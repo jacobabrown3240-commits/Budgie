@@ -197,23 +197,28 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 }
 .drag-handle:active { cursor: grabbing; }
 
-/* ---------- Icon badges & chips ---------- */
+/* ---------- Icons ---------- */
+.ic { width: 20px; height: 20px; display: block; flex: 0 0 auto; }
 .ico-badge {
   flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px;
-  border: none; font-size: 17px; line-height: 1;
+  border: none; line-height: 1; color: var(--bc);
   display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--bc) 15%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bc) 26%, transparent);
   transition: transform .12s;
 }
 .ico-badge:active { transform: scale(0.9); }
+.ico-badge .ic { width: 20px; height: 20px; }
 .ico-chip {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 7px; font-size: 13px; flex: 0 0 auto;
+  width: 24px; height: 24px; border-radius: 7px; flex: 0 0 auto; color: var(--bc);
   background: color-mix(in srgb, var(--bc) 15%, var(--surface));
 }
-.leg-ico { font-size: 14px; width: 18px; text-align: center; flex: 0 0 auto; }
-.cmp-ico { font-size: 15px; margin-right: 6px; }
+.ico-chip .ic { width: 16px; height: 16px; }
+.leg-ico { display: inline-flex; align-items: center; justify-content: center; width: 18px; flex: 0 0 auto; color: var(--ink-2); }
+.leg-ico .ic { width: 17px; height: 17px; }
+.cmp-ico { display: inline-flex; align-items: center; vertical-align: -3px; margin-right: 7px; color: var(--ink-2); }
+.cmp-ico .ic { width: 16px; height: 16px; }
 
 .row .name {
   flex: 1 1 auto; min-width: 0; border: none; background: transparent;
@@ -310,7 +315,8 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: 11px; font-weight: 650; transition: color .15s, background .15s;
 }
-.tab .tab-ico { font-size: 18px; line-height: 1; }
+.tab .tab-ico { display: flex; align-items: center; justify-content: center; }
+.tab .tab-ico .ic { width: 21px; height: 21px; }
 .tab.is-active { color: var(--brand); background: var(--brand-soft); }
 
 /* ---------- Sidebar drawer ---------- */
@@ -333,7 +339,8 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 }
 @keyframes slidein { from { transform: translateX(-101%); } to { transform: translateX(0); } }
 .drawer-head { display: flex; align-items: center; gap: 11px; padding: 8px 10px 16px; }
-.drawer-logo { font-size: 24px; }
+.drawer-logo { display: flex; align-items: center; color: var(--brand); }
+.drawer-logo .ic { width: 25px; height: 25px; stroke-width: 2.4; }
 .drawer-title { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
@@ -342,12 +349,13 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
   font-size: 16px; font-weight: 650; padding: 13px 12px; border-radius: 14px;
   transition: background .15s;
 }
-.nav-item .nav-ico { font-size: 18px; width: 22px; text-align: center; color: var(--muted); }
+.nav-item .nav-ico { display: flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
+.nav-item .nav-ico .ic { width: 19px; height: 19px; }
 .nav-item:active { background: var(--surface-2); }
 .nav-item.is-active { background: var(--brand-soft); color: var(--brand); }
 .nav-item.is-active .nav-ico { color: var(--brand); }
 .nav-item.small { font-size: 14.5px; font-weight: 550; padding: 12px; color: var(--ink-2); }
-.nav-item.small .nav-ico { font-size: 16px; }
+.nav-item.small .nav-ico .ic { width: 17px; height: 17px; }
 .nav-item.small.danger { color: var(--over); }
 .drawer-sep { height: 1px; background: var(--hairline); margin: 10px 6px; }
 
@@ -380,9 +388,11 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 4px 2px 14px; }
 .icon-opt {
   aspect-ratio: 1; border: 1px solid var(--hairline); background: var(--surface-2);
-  border-radius: 13px; font-size: 22px; display: flex; align-items: center; justify-content: center;
+  border-radius: 13px; font-size: 14px; color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
   transition: transform .12s, border-color .12s;
 }
+.icon-opt .ic { width: 22px; height: 22px; }
 .icon-opt:active { transform: scale(0.9); border-color: var(--brand); }
 .icon-auto { font-size: 14px; font-weight: 700; color: var(--brand); }
 
@@ -415,7 +425,8 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 .log-totals { display: flex; flex-direction: column; gap: 3px; }
 .logtot { display: flex; align-items: center; gap: 11px; padding: 9px 0; border-bottom: 1px solid var(--hairline); }
 .logtot:last-child { border-bottom: none; }
-.logtot .ico-chip { width: 32px; height: 32px; font-size: 16px; border-radius: 10px; }
+.logtot .ico-chip { width: 32px; height: 32px; border-radius: 10px; }
+.logtot .ico-chip .ic { width: 18px; height: 18px; }
 .logtot-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .logtot-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .logtot-name { font-size: 15px; font-weight: 650; }
@@ -429,10 +440,11 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 .logrow { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
 .logrow:last-child { border-bottom: none; }
 .logrow-ico {
-  font-size: 17px; width: 34px; height: 34px; flex: 0 0 auto;
+  width: 34px; height: 34px; flex: 0 0 auto; color: var(--ink-2);
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-2); border-radius: 10px;
 }
+.logrow-ico .ic { width: 18px; height: 18px; }
 .logrow-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .logrow-label { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logrow-sub { font-size: 11.5px; color: var(--muted); }

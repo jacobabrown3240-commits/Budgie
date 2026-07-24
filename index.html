@@ -137,13 +137,13 @@
     <!-- Primary bottom nav -->
     <nav class="tabbar" id="tabbar">
       <button class="tab is-active" data-view="plan">
-        <span class="tab-ico">&#9635;</span><span>Plan</span>
+        <span class="tab-ico" data-ic="grid"></span><span>Plan</span>
       </button>
       <button class="tab" data-view="actual">
-        <span class="tab-ico">&#10003;</span><span>Actual</span>
+        <span class="tab-ico" data-ic="check"></span><span>Actual</span>
       </button>
       <button class="tab" data-view="compare">
-        <span class="tab-ico">&#8646;</span><span>Compare</span>
+        <span class="tab-ico" data-ic="compare"></span><span>Compare</span>
       </button>
     </nav>
   </div>
@@ -152,18 +152,18 @@
   <div class="drawer-backdrop" id="navDrawer" hidden>
     <nav class="drawer" role="dialog" aria-label="Menu">
       <div class="drawer-head">
-        <span class="drawer-logo">&#128202;</span>
+        <span class="drawer-logo" data-ic="logo"></span>
         <span class="drawer-title">Kakeibo</span>
       </div>
       <div class="drawer-nav">
-        <button class="nav-item" data-view="history"><span class="nav-ico">&#8635;</span>History</button>
-        <button class="nav-item" data-view="log"><span class="nav-ico">&#128203;</span>Log</button>
+        <button class="nav-item" data-view="history"><span class="nav-ico" data-ic="history"></span>History</button>
+        <button class="nav-item" data-view="log"><span class="nav-ico" data-ic="receipt"></span>Log</button>
       </div>
       <div class="drawer-sep"></div>
-      <button class="nav-item small" data-action="copyPrev"><span class="nav-ico">&#10697;</span>Copy last month's plan</button>
-      <button class="nav-item small" data-action="export"><span class="nav-ico">&#8615;</span>Export backup</button>
-      <button class="nav-item small" data-action="import"><span class="nav-ico">&#8613;</span>Import backup</button>
-      <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico">&#128465;</span>Clear this month</button>
+      <button class="nav-item small" data-action="copyPrev"><span class="nav-ico" data-ic="copy"></span>Copy last month's plan</button>
+      <button class="nav-item small" data-action="export"><span class="nav-ico" data-ic="download"></span>Export backup</button>
+      <button class="nav-item small" data-action="import"><span class="nav-ico" data-ic="upload"></span>Import backup</button>
+      <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico" data-ic="trash"></span>Clear this month</button>
     </nav>
   </div>
   <input type="file" id="importFile" accept="application/json" hidden />
