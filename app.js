@@ -33,60 +33,116 @@
   }
   function uid() { return Math.random().toString(36).slice(2, 9); }
 
-  /* ---------- Icons ---------- */
-  // Auto-pick an emoji from the category name so the obvious things get an
-  // icon without any setup. A row can override this via the icon picker.
+  /* ---------- Icons (clean monochrome line set) ---------- */
+  // 24x24 viewBox, stroked with currentColor. Keys are stable identifiers used
+  // in storage; the name auto-maps to one, and a row can override it.
+  var ICON_PATHS = {
+    home:      '<path d="M3.5 10.5 12 4l8.5 6.5"/><path d="M5.5 9.5V20h13V9.5"/>',
+    cart:      '<circle cx="9" cy="20" r="1.4"/><circle cx="17.5" cy="20" r="1.4"/><path d="M2.5 3.5H5l2.2 11a1.3 1.3 0 0 0 1.3 1h8.2a1.3 1.3 0 0 0 1.3-1L20.5 7H6"/>',
+    car:       '<path d="M4.5 11 6 7.2A2 2 0 0 1 7.9 6h8.2a2 2 0 0 1 1.9 1.2L19.5 11"/><rect x="3.5" y="11" width="17" height="5.5" rx="1.5"/><circle cx="7.5" cy="16.5" r="1.3"/><circle cx="16.5" cy="16.5" r="1.3"/>',
+    fuel:      '<path d="M6.5 20V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14"/><path d="M4.5 20h12"/><path d="M8.5 9.5h4"/><path d="M14.5 8.5l3 2.5V16a1.8 1.8 0 0 0 3.6 0V9.5L18.5 6.9"/>',
+    bolt:      '<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6l1-8z"/>',
+    wifi:      '<path d="M4.5 12a10.5 10.5 0 0 1 15 0"/><path d="M8 15.5a5.5 5.5 0 0 1 8 0"/><path d="M12 19h.01"/>',
+    phone:     '<rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 18.5h3"/>',
+    cup:       '<path d="M4.5 8.5h12v4.5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"/><path d="M16.5 9.5h2a2 2 0 0 1 0 5.5h-2"/><path d="M7.5 3.5v2M11 3.5v2"/>',
+    food:      '<path d="M6.5 3v8M4 3v3.5A2.5 2.5 0 0 0 6.5 9M9 3v6M6.5 11v10"/><path d="M16.5 3c-1.6 0-2.7 2.6-2.7 5.6 0 2.4 1.1 3.4 2.7 3.4v9"/>',
+    tv:        '<rect x="3" y="5.5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17.5v3.5"/><path d="M10.5 9.5 15 12l-4.5 2.5z"/>',
+    bank:      '<path d="M3.5 9.5 12 4l8.5 5.5"/><path d="M4.5 9.5h15"/><path d="M6.5 9.5v8M10 9.5v8M14 9.5v8M17.5 9.5v8"/><path d="M4 20.5h16"/>',
+    dumbbell:  '<path d="M6.5 8.5v7M4 6.5v11M17.5 8.5v7M20 6.5v11M8.5 12h7"/>',
+    health:    '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M12 8.5v7M8.5 12h7"/>',
+    film:      '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M8 5.5v13M16 5.5v13"/>',
+    game:      '<rect x="2.5" y="8" width="19" height="8" rx="4"/><path d="M7 11v2M6 12h2"/><path d="M15.5 11.5h.01M17.5 13.5h.01"/>',
+    bag:       '<path d="M6.5 8h11l-1 12.5h-9z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/>',
+    shield:    '<path d="M12 3.2 19 6v5.2c0 4.4-3 7.9-7 9.6-4-1.7-7-5.2-7-9.6V6z"/>',
+    education: '<path d="M12 4 2.5 8.5 12 13l9.5-4.5z"/><path d="M6.5 10.5V15c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.5"/><path d="M21.5 8.5v5"/>',
+    pet:       '<circle cx="7" cy="9.5" r="1.5"/><circle cx="12" cy="7.5" r="1.5"/><circle cx="17" cy="9.5" r="1.5"/><path d="M12 12.5c-2.6 0-4.5 1.9-4.5 3.8A2.7 2.7 0 0 0 10 19c1 0 1.2-.4 2-.4s1 .4 2 .4a2.7 2.7 0 0 0 2.5-2.7c0-1.9-1.9-3.8-4.5-3.8z"/>',
+    plane:     '<path d="M21 3 3 10.5l6.5 2.2L12 21l3.2-6.3z"/><path d="M21 3 9.5 12.7"/>',
+    baby:      '<circle cx="12" cy="12" r="8.5"/><path d="M9 10.5h.01M15 10.5h.01M9 14.5c1.2 1.1 4.8 1.1 6 0"/>',
+    card:      '<rect x="2.5" y="5.5" width="19" height="13" rx="2.2"/><path d="M2.5 10h19M6 15h4"/>',
+    gift:      '<rect x="3.5" y="8.5" width="17" height="4" rx="1"/><path d="M5.5 12.5V20h13v-7.5M12 8.5V20"/><path d="M12 8.5C11 6 9.2 4.6 7.9 5.5 6.6 6.4 8.5 8.5 12 8.5zM12 8.5c1-2.5 2.8-3.9 4.1-3 1.3.9-.6 3-4.1 3z"/>',
+    beauty:    '<path d="M9.5 8.5 8 4.5l3.4-1.4 1.5 4"/><rect x="8.5" y="8.5" width="4.5" height="3.5" rx=".8"/><rect x="9" y="12" width="3.5" height="9" rx="1"/>',
+    broom:     '<path d="M14 3 8.5 11.5"/><path d="M4 20c1-3 3-5 6-6l3.5 3.5c-1 3-3 5-6 6z"/><path d="M9.5 14.5 6 21M12 16 9 21M14 15 12 21"/>',
+    receipt:   '<path d="M6 2.5h12v19l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
+    briefcase: '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8.5 7.5V5.8a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.7M3 12.5h18"/>',
+    cash:      '<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.4"/><path d="M5.5 9.5v5M18.5 9.5v5"/>',
+    chart:     '<path d="M4 4v16h16"/><path d="M7.5 14.5 11 11l3 2 4.5-5.5"/>',
+    store:     '<path d="M4.5 9 5.5 5h13l1 4"/><path d="M4.5 9a2.4 2.4 0 0 0 4.9 0 2.4 2.4 0 0 0 4.9 0 2.4 2.4 0 0 0 4.9 0"/><path d="M6 10.5V20h12v-9.5"/>',
+    star:      '<path d="M12 3.5 14.3 9l6 .5-4.5 3.9 1.4 5.9L12 16.2 6.8 19.3l1.4-5.9L3.7 9.5l6-.5z"/>',
+    wallet:    '<rect x="3" y="6" width="18" height="12.5" rx="2.4"/><path d="M3 10h13a2 2 0 0 1 0 4H3"/><path d="M16.5 12h.01"/>',
+    tag:       '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8.5 8.5-8.5 8.5z"/><circle cx="8" cy="8" r="1.4"/>',
+    /* app chrome */
+    grid:      '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
+    check:     '<circle cx="12" cy="12" r="8.5"/><path d="M8 12l3 3 5-6"/>',
+    compare:   '<path d="M7 5 3.5 8.5 7 12"/><path d="M3.5 8.5H16"/><path d="M17 12l3.5 3.5L17 19.5"/><path d="M20.5 15.5H8"/>',
+    history:   '<path d="M3.6 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4.5V9.5H8.5"/><path d="M12 7.5V12l3 2"/>',
+    copy:      '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2.5"/>',
+    download:  '<path d="M12 3.5v11M8 10.5l4 4 4-4"/><path d="M4.5 20h15"/>',
+    upload:    '<path d="M12 14.5v-11M8 7.5l4-4 4 4"/><path d="M4.5 20h15"/>',
+    trash:     '<path d="M4.5 6.5h15M9 6.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v1.5M6.5 6.5 7.5 20a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13.5M10 10.5v6M14 10.5v6"/>',
+    logo:      '<path d="M5 20V11M12 20V4M19 20v-6"/>'
+  };
+  function svgIcon(key, extra) {
+    var p = ICON_PATHS[key] || ICON_PATHS.tag;
+    return '<svg class="ic' + (extra ? ' ' + extra : '') + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      p + '</svg>';
+  }
+
   var EXPENSE_RULES = [
-    [/rent|mortgage|housing|apartment|landlord|hoa/i, "🏠"],       // 🏠
-    [/grocer|food|supermarket|market/i, "🛒"],                     // 🛒
-    [/gas|fuel|petrol/i, "⛽"],                                          // ⛽
-    [/transport|car|auto|uber|lyft|bus|train|subway|metro|commut|parking|toll/i, "🚗"], // 🚗
-    [/util|electric|water|power|heat|sewage/i, "💡"],              // 💡
-    [/internet|wifi|broadband/i, "🌐"],                            // 🌐
-    [/phone|mobile|cell/i, "📱"],                                  // 📱
-    [/coffee|cafe/i, "☕"],                                              // ☕
-    [/dining|restaurant|eat|takeout|lunch|dinner|drinks|bar/i, "🍽️"], // 🍽️
-    [/subscri|netflix|spotify|stream|hulu|disney|prime/i, "📺"],   // 📺
-    [/sav|invest|401|ira|emergency/i, "🏦"],                       // 🏦
-    [/gym|fitness|workout|sport/i, "🏋️"],                     // 🏋️
-    [/health|medical|doctor|dentist|pharmacy|meds|medic/i, "🩺"],  // 🩺
-    [/entertain|movie|cinema|concert|hobby/i, "🎬"],               // 🎬
-    [/game|gaming/i, "🎮"],                                        // 🎮
-    [/shop|clothe|apparel|amazon|retail/i, "🛍️"],            // 🛍️
-    [/insur/i, "🛡️"],                                        // 🛡️
-    [/educat|school|tuition|book|course|student|class/i, "🎓"],    // 🎓
-    [/pet|dog|cat|vet/i, "🐾"],                                    // 🐾
-    [/travel|vacation|flight|hotel|trip|airbnb/i, "✈️"],           // ✈️
-    [/kid|child|baby|daycare|childcare|diaper/i, "🧸"],            // 🧸
-    [/debt|loan|credit|repay/i, "💳"],                             // 💳
-    [/gift|present|donat|charity|tithe/i, "🎁"],                   // 🎁
-    [/beauty|hair|salon|cosmet|nails/i, "💄"],                     // 💄
-    [/laundry|clean/i, "🧹"],                                      // 🧹
-    [/tax/i, "🧾"]                                                 // 🧾
+    [/rent|mortgage|housing|apartment|landlord|hoa/i, "home"],
+    [/grocer|food|supermarket|market/i, "cart"],
+    [/gas|fuel|petrol/i, "fuel"],
+    [/transport|car|auto|uber|lyft|bus|train|subway|metro|commut|parking|toll/i, "car"],
+    [/util|electric|water|power|heat|sewage/i, "bolt"],
+    [/internet|wifi|broadband/i, "wifi"],
+    [/phone|mobile|cell/i, "phone"],
+    [/coffee|cafe/i, "cup"],
+    [/dining|restaurant|eat|takeout|lunch|dinner|drinks|bar/i, "food"],
+    [/subscri|netflix|spotify|stream|hulu|disney|prime/i, "tv"],
+    [/sav|invest|401|ira|emergency/i, "bank"],
+    [/gym|fitness|workout|sport/i, "dumbbell"],
+    [/health|medical|doctor|dentist|pharmacy|meds|medic/i, "health"],
+    [/entertain|movie|cinema|concert|hobby/i, "film"],
+    [/game|gaming/i, "game"],
+    [/shop|clothe|apparel|amazon|retail/i, "bag"],
+    [/insur/i, "shield"],
+    [/educat|school|tuition|book|course|student|class/i, "education"],
+    [/pet|dog|cat|vet/i, "pet"],
+    [/travel|vacation|flight|hotel|trip|airbnb/i, "plane"],
+    [/kid|child|baby|daycare|childcare|diaper/i, "baby"],
+    [/debt|loan|credit|repay/i, "card"],
+    [/gift|present|donat|charity|tithe/i, "gift"],
+    [/beauty|hair|salon|cosmet|nails/i, "beauty"],
+    [/laundry|clean/i, "broom"],
+    [/tax/i, "receipt"]
   ];
   var INCOME_RULES = [
-    [/paycheck|salary|wage|job|employ|payroll/i, "💼"],            // 💼
-    [/side|gig|freelance|contract|1099|consult/i, "🧑‍💻"], // 🧑‍💻
-    [/bonus/i, "🎉"],                                              // 🎉
-    [/interest|dividend|invest|capital|stock|crypto/i, "📈"],      // 📈
-    [/gift/i, "🎁"],                                               // 🎁
-    [/refund|rebate|tax/i, "🧾"],                                  // 🧾
-    [/rent|rental/i, "🏠"],                                        // 🏠
-    [/business|sales|shop/i, "🏪"]                                 // 🏪
+    [/paycheck|salary|wage|job|employ|payroll/i, "briefcase"],
+    [/side|gig|freelance|contract|1099|consult/i, "chart"],
+    [/bonus/i, "star"],
+    [/interest|dividend|invest|capital|stock|crypto/i, "chart"],
+    [/gift/i, "gift"],
+    [/refund|rebate|tax/i, "receipt"],
+    [/rent|rental/i, "home"],
+    [/business|sales|shop/i, "store"]
   ];
   var ICON_CHOICES = [
-    "🏠","🛒","🚗","⛽","💡","🌐","📱","🍽️",
-    "☕","📺","🏦","🏋️","🩺","🎬","🎮","🛍️",
-    "🛡️","🎓","🐾","✈️","🧸","💳","🎁","💄",
-    "🧹","🧾","💼","🧑‍💻","📈","🎉","💵","💸"
+    "home","cart","car","fuel","bolt","wifi","phone","cup",
+    "food","tv","bank","dumbbell","health","film","game","bag",
+    "shield","education","pet","plane","baby","card","gift","beauty",
+    "broom","receipt","briefcase","chart","store","star","cash","tag"
   ];
   function iconFor(name, type) {
     var rules = type === "income" ? INCOME_RULES : EXPENSE_RULES;
     var n = String(name || "");
     for (var i = 0; i < rules.length; i++) if (rules[i][0].test(n)) return rules[i][1];
-    return type === "income" ? "💵" : "💸"; // 💵 / 💸
+    return type === "income" ? "cash" : "tag";
   }
-  function rowIcon(r, type) { return r.icon ? r.icon : iconFor(r.name, type); }
+  // Returns a valid icon key. Older data may hold a custom key; unknown values
+  // (e.g. a legacy emoji) fall back to name-based detection.
+  function rowIcon(r, type) {
+    return (r.icon && ICON_PATHS[r.icon]) ? r.icon : iconFor(r.name, type);
+  }
 
   /* ---------- State ---------- */
   var state = load();
@@ -337,7 +393,7 @@
       return '' +
         '<div class="cmp-row">' +
           '<div class="cmp-top">' +
-            '<span class="cmp-name"><span class="cmp-ico">' + rowIcon(r, "expense") + '</span>' + esc(r.name) + '</span>' +
+            '<span class="cmp-name"><span class="cmp-ico">' + svgIcon(rowIcon(r, "expense")) + '</span>' + esc(r.name) + '</span>' +
             '<span class="cmp-delta ' + dcls + '">' + dtext + '</span>' +
           '</div>' +
           '<div class="cmp-bars">' +
@@ -537,14 +593,14 @@
     }
     listEl.innerHTML = entries.map(function (e) {
       var cat = m.expenses.filter(function (r) { return r.id === e.catId; })[0];
-      var icon = cat ? rowIcon(cat, "expense") : "🏷️";
+      var icon = cat ? rowIcon(cat, "expense") : "tag";
       var catName = cat ? cat.name : "(deleted category)";
       var d = e.ts ? new Date(e.ts) : null;
       var dateStr = d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
       var label = e.note ? esc(e.note) : esc(catName);
       var subline = (e.note ? esc(catName) + " · " : "") + dateStr;
       return '<div class="logrow" data-eid="' + e.id + '">' +
-          '<span class="logrow-ico">' + icon + '</span>' +
+          '<span class="logrow-ico">' + svgIcon(icon) + '</span>' +
           '<div class="logrow-main">' +
             '<span class="logrow-label">' + label + '</span>' +
             '<span class="logrow-sub">' + subline + '</span>' +
@@ -589,7 +645,7 @@
     if (items.length > 8) {
       var head = items.slice(0, 7);
       var restVal = items.slice(7).reduce(function (t, x) { return t + x.val; }, 0);
-      head.push({ name: "Other", val: restVal, i: -1, icon: "🗂️" });
+      head.push({ name: "Other", val: restVal, i: -1, icon: "tag" });
       shown = head;
     }
 
@@ -623,7 +679,7 @@
       var p = Math.round((x.val / total) * 100);
       return '<div class="leg-item">' +
         '<span class="swatch" style="background:' + color + '"></span>' +
-        '<span class="leg-ico">' + (x.icon || "") + '</span>' +
+        '<span class="leg-ico">' + svgIcon(x.icon || "tag") + '</span>' +
         '<span class="leg-name">' + esc(x.name) + '</span>' +
         '<span class="leg-val">' + money(x.val) + '</span>' +
         '<span class="leg-pct">' + p + '%</span>' +
@@ -637,13 +693,13 @@
   function rowColor(type, i) {
     return type === "expense" ? css(SERIES[i % SERIES.length]) : css("--good-fill");
   }
-  // Tappable emoji badge tinted with the category's color (keeps color identity
+  // Tappable icon badge tinted with the category's color (keeps color identity
   // and adds a recognisable icon). Tapping opens the icon picker.
   function iconBadgeBtn(r, type, color) {
-    return '<button class="ico-badge" data-iconpick="1" style="--bc:' + color + '" aria-label="Change icon">' + rowIcon(r, type) + '</button>';
+    return '<button class="ico-badge" data-iconpick="1" style="--bc:' + color + '" aria-label="Change icon">' + svgIcon(rowIcon(r, type)) + '</button>';
   }
-  function iconChip(icon, color) {
-    return '<span class="ico-chip" style="--bc:' + color + '">' + icon + '</span>';
+  function iconChip(iconKey, color) {
+    return '<span class="ico-chip" style="--bc:' + color + '">' + svgIcon(iconKey) + '</span>';
   }
   function editRow(r, type, i, field) {
     var color = rowColor(type, i);
@@ -930,11 +986,11 @@
   var iconGrid = document.getElementById("iconGrid");
   var pickTarget = null; // { type, index }
 
-  // Build the grid once (an "Auto" reset chip + the emoji choices).
+  // Build the grid once (an "Auto" reset chip + the icon choices).
   iconGrid.innerHTML =
     '<button class="icon-opt icon-auto" data-icon="__auto__" title="Auto from name">Aa</button>' +
     ICON_CHOICES.map(function (ic) {
-      return '<button class="icon-opt" data-icon="' + ic + '">' + ic + '</button>';
+      return '<button class="icon-opt" data-icon="' + ic + '">' + svgIcon(ic) + '</button>';
     }).join("");
 
   function openIconPicker(type, index) {
@@ -1018,6 +1074,10 @@
   }
 
   /* ---------- Boot ---------- */
+  // Fill static chrome icons (tab bar, sidebar) from the icon set.
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) {
+    el.innerHTML = svgIcon(el.dataset.ic);
+  });
   render();
 
   // Re-render on theme change so SVG colors update.
