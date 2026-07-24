@@ -44,8 +44,9 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
-/* Forced dark theme (overrides the light defaults above regardless of OS). */
-:root {
+/* Dark theme — applied via <html data-theme="dark">. "auto" is resolved to
+   dark/light in JS, so only these two concrete themes exist in CSS. */
+:root[data-theme="dark"] {
     color-scheme: dark;
     --page:      #0a0c10;
     --surface:   #15181f;
@@ -490,3 +491,89 @@ body.is-dragging { user-select: none; -webkit-user-select: none; }
 
 .privacy { text-align: center; color: var(--muted); font-size: 12px; margin: 4px 12px 0; line-height: 1.5; }
 .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 20px 8px; }
+
+/* ============================================================
+   New components: segmented control, by-type, reflection,
+   quick-log, date input, category trend, PIN lock
+   ============================================================ */
+
+/* Segmented control (theme + kakeibo type) */
+.seg { display: flex; gap: 4px; background: var(--surface-2); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
+.seg-btn {
+  flex: 1 1 0; border: none; background: transparent; color: var(--ink-2);
+  font-size: 13px; font-weight: 650; padding: 9px 6px; border-radius: 9px;
+  transition: background .15s, color .15s;
+}
+.seg-btn.on { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-sm); }
+
+/* By type (kakeibo buckets) */
+.type-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--surface-2); margin-bottom: 12px; }
+.type-bar span { display: block; height: 100%; }
+.type-legend { display: flex; flex-direction: column; gap: 2px; }
+.type-row { display: flex; align-items: center; gap: 9px; padding: 7px 2px; border-bottom: 1px solid var(--hairline); font-size: 13.5px; }
+.type-row:last-child { border-bottom: none; }
+.type-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.type-name { flex: 1 1 auto; font-weight: 600; }
+.type-sub { color: var(--muted); font-weight: 400; font-size: 12px; }
+.type-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.type-pct { color: var(--muted); width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Monthly reflection */
+.reflect-summary { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+.reflect-summary b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.reflect-summary .good { color: var(--good); } .reflect-summary .good b { color: var(--good); }
+.reflect-summary .over { color: var(--over); } .reflect-summary .over b { color: var(--over); }
+.reflect-label { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin: 6px 0 5px; }
+.reflect-input {
+  width: 100%; border: 1.5px solid var(--hairline); background: var(--surface-2);
+  color: var(--ink); font-family: inherit; font-size: 14px; padding: 10px 12px;
+  border-radius: var(--r-sm); resize: vertical; margin-bottom: 6px;
+}
+.reflect-input:focus { outline: none; border-color: var(--brand); }
+.reflect-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 4px 0; }
+
+/* vs last month */
+.cmp-vs { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cmp-vs.up { color: var(--over); }
+.cmp-vs.down { color: var(--good); }
+
+/* Quick-log + button on Actual rows */
+.quick-log {
+  flex: 0 0 auto; width: 30px; height: 30px; margin-left: 2px; border: none;
+  border-radius: 9px; background: var(--brand-soft); color: var(--brand);
+  font-size: 20px; font-weight: 600; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.quick-log:active { transform: scale(0.9); }
+
+/* Date input + mini select */
+.log-date {
+  width: 100%; border: 1.5px solid var(--hairline); background: var(--surface-2);
+  color: var(--ink); font-family: inherit; font-size: 15px; padding: 9px 12px; border-radius: var(--r-sm);
+}
+.log-date:focus { outline: none; border-color: var(--brand); }
+.log-select.mini { width: auto; max-width: 55%; padding: 7px 30px 7px 10px; font-size: 13px; font-weight: 600;
+  background-position: calc(100% - 14px) 15px, calc(100% - 9px) 15px; }
+
+/* PIN lock overlay */
+.lock {
+  position: fixed; inset: 0; z-index: 80; background: var(--page);
+  display: flex; align-items: center; justify-content: center;
+}
+.lock-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 0 24px calc(var(--safe-b) + 20px); width: 100%; max-width: 340px; }
+.lock-inner.shake { animation: shake .4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
+.lock-logo { color: var(--brand); }
+.lock-logo .ic { width: 34px; height: 34px; stroke-width: 2.4; }
+.lock-title { font-size: 17px; font-weight: 650; color: var(--ink); }
+.lock-dots { display: flex; gap: 14px; }
+.lock-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--baseline); }
+.lock-dot.on { background: var(--brand); border-color: var(--brand); }
+.lock-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; margin-top: 8px; }
+.lock-key {
+  aspect-ratio: 1; border: none; background: var(--surface); color: var(--ink);
+  font-size: 24px; font-weight: 600; border-radius: 50%; box-shadow: var(--shadow-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.lock-key.ghost { background: transparent; box-shadow: none; color: var(--ink-2); }
+.lock-key:active { background: var(--surface-2); }
+.lock-key .ic { width: 24px; height: 24px; }
