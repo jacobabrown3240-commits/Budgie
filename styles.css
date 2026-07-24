@@ -44,8 +44,8 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Forced dark theme (overrides the light defaults above regardless of OS). */
+:root {
     color-scheme: dark;
     --page:      #0a0c10;
     --surface:   #15181f;
@@ -75,7 +75,6 @@
     --shadow:     0 1px 0 rgba(255,255,255,0.02);
     --shadow-float: 0 12px 40px rgba(0,0,0,0.55);
     --shadow-accent: 0 10px 26px rgba(91,141,255,0.28);
-  }
 }
 
 * { box-sizing: border-box; }
