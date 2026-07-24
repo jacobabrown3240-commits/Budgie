@@ -80,12 +80,11 @@ code {
   width: 34px; height: 34px;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: var(--accent-ink);
-  font-family: ui-monospace, monospace;
-  font-size: 14px;
-  font-weight: 700;
+  flex: none;
 }
-.brand-name { font-size: 1.05rem; }
+.brand-mark svg { width: 22px; height: 22px; display: block; }
+.brand-name { font-size: 1.05rem; line-height: 1.05; }
+.brand-sub { color: var(--accent-strong); font-weight: 600; }
 
 .nav { display: flex; align-items: center; gap: 6px; }
 .nav a {

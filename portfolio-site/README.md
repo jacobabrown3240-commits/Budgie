@@ -1,4 +1,4 @@
-# IT Services & Portfolio site
+# Brown Forge IT Solutions — website
 
 A small, self-contained static website to advertise IT services and show a
 portfolio. No build step, no frameworks, no dependencies — just open
