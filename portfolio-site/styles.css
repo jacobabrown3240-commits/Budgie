@@ -488,6 +488,42 @@ a.card:hover .card-link { text-decoration: underline; }
 .contact-inner .section-lede { margin-left: auto; margin-right: auto; }
 .contact-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
 
+.contact-grid { display: grid; gap: 40px; }
+@media (min-width: 861px) {
+  .contact-grid { grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: start; }
+}
+.contact-methods { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 16px; }
+.contact-methods li { display: flex; gap: 14px; align-items: center; }
+.c-ico {
+  flex: none; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.c-ico .ico { width: 22px; height: 22px; }
+.contact-methods strong { display: block; font-size: .9rem; }
+.contact-methods a, .contact-methods li > div > span { color: var(--text-soft); font-size: .95rem; }
+.contact-methods a:hover { color: var(--accent-strong); }
+
+.contact-form {
+  display: grid; gap: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: clamp(22px, 4vw, 32px);
+}
+.field { display: grid; gap: 6px; }
+.field label { font-size: .85rem; font-weight: 600; color: var(--text-soft); }
+.field input, .field select, .field textarea {
+  width: 100%; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 11px 13px;
+}
+.field textarea { resize: vertical; min-height: 110px; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field input::placeholder, .field textarea::placeholder { color: color-mix(in srgb, var(--text-soft) 75%, transparent); }
+.contact-form .btn { justify-self: start; margin-top: 4px; }
+
 /* footer */
 .site-footer { border-top: 1px solid var(--border); padding: 28px 0; }
 .footer-inner {
