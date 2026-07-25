@@ -104,6 +104,7 @@
     trash:     '<path d="M4.5 6.5h15M9 6.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v1.5M6.5 6.5 7.5 20a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13.5M10 10.5v6M14 10.5v6"/>',
     settings:  '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 7l2.6 1.5M17.2 15.5 19.8 17M4.2 17l2.6-1.5M17.2 8.5 19.8 7M2.5 12h3M18.5 12h3"/>',
     lock:      '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    trending:  '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
     backspace: '<path d="M9 5.5 3.5 12 9 18.5h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M12.5 9.5l4 5M16.5 9.5l-4 5"/>',
     logo:      '<path d="M5 20V11M12 20V4M19 20v-6"/>'
   };
@@ -176,6 +177,7 @@
   if (!state.settings) state.settings = {};
   if (!state.settings.theme) state.settings.theme = "dark"; // dark by default
   if (typeof state.settings.pin === "undefined") state.settings.pin = null;
+  if (!state.forecast) state.forecast = { debit: 0, card: 0, apr: 22, monthly: 0, useNet: true, horizon: 12 };
   if (!state.selected) state.selected = monthKey(new Date());
   ensureMonth(state.selected);
 
@@ -288,6 +290,130 @@
     renderCompare();
     renderHistory();
     renderLog();
+    renderForecast();
+  }
+
+  /* ============================================================
+     FORECAST — project cash, card debt and net worth forward
+     ============================================================ */
+  function planNet() {
+    var m = month();
+    return sum(m.income, "planned") - sum(m.expenses, "planned");
+  }
+  function computeProjection() {
+    var f = state.forecast;
+    var monthly = f.useNet ? planNet() : (Number(f.monthly) || 0);
+    var debit = Number(f.debit) || 0;
+    var card = Number(f.card) || 0;
+    var apr = Number(f.apr) || 0;
+    var H = f.horizon || 12;
+    var pts = [{ i: 0, debit: debit, card: card, net: debit - card }];
+    var debtFree = card <= 0 ? 0 : null;
+    for (var i = 1; i <= H; i++) {
+      if (card > 0) card += card * (apr / 1200);      // monthly interest
+      var avail = monthly;
+      if (avail > 0 && card > 0) {                     // pay down the card first
+        var applied = Math.min(avail, card);
+        card -= applied; avail -= applied;
+      }
+      debit += avail;                                  // remainder builds cash (or draws it down)
+      if (card < 0) card = 0;
+      if (debtFree === null && card <= 0) debtFree = i;
+      pts.push({ i: i, debit: debit, card: card, net: debit - card });
+    }
+    return { pts: pts, monthly: monthly, debtFree: debtFree, H: H };
+  }
+
+  function renderForecast() {
+    var f = state.forecast;
+    // Inputs (rebuilt on full render; safe because editing triggers only output refresh)
+    setVal("fcDebit", f.debit);
+    setVal("fcCard", f.card);
+    setVal("fcApr", f.apr);
+    setVal("fcMonthly", f.useNet ? "" : f.monthly);
+    var planBtn = document.getElementById("fcUsePlan");
+    planBtn.textContent = "Use plan net (" + signedMoney(Math.round(planNet())) + ")";
+    planBtn.classList.toggle("on", !!f.useNet);
+    document.getElementById("fcHorizon").innerHTML = [6, 12, 24].map(function (h) {
+      return '<button class="seg-btn' + (f.horizon === h ? " on" : "") + '" data-horizon="' + h + '">' + h + " mo</button>";
+    }).join("");
+    renderForecastOutputs();
+  }
+  function setVal(id, v) {
+    var el = document.getElementById(id);
+    if (!el || document.activeElement === el) return; // don't clobber while typing
+    el.value = (v == null || v === "" || Number(v) === 0) ? "" : String(v);
+  }
+  function renderForecastOutputs() {
+    var pr = computeProjection();
+    var now = pr.pts[0].net;
+    var end = pr.pts[pr.H].net;
+    var dfText = pr.debtFree === 0 ? "No card debt" : (pr.debtFree != null ? "in " + pr.debtFree + " mo" : "Not on track");
+    document.getElementById("forecastSummary").innerHTML =
+      stat("Net worth now", signedMoney(Math.round(now))) +
+      stat("Debt-free", dfText) +
+      statAccentNet("In " + pr.H + " months", signedMoney(Math.round(end)), (end - now >= 0 ? "+" : "") + money(Math.round(end - now)) + " vs now", end >= 0);
+
+    document.getElementById("forecastLegend").innerHTML =
+      '<span class="key"><i style="background:' + css("--good-fill") + '"></i>Net worth</span>' +
+      '<span class="key"><i style="background:' + css("--actual") + '"></i>Card debt</span>';
+
+    var note = document.getElementById("forecastNote");
+    if (pr.debtFree === null && (Number(state.forecast.card) || 0) > 0) {
+      note.className = "fc-note warn";
+      note.textContent = "⚠ Your monthly contribution doesn't cover the card's interest, so the debt keeps growing. Increase it to make progress.";
+    } else if (pr.debtFree && pr.debtFree > 0) {
+      note.className = "fc-note";
+      note.textContent = "At this rate your card is paid off around " + monthName(shiftMonth(state.selected, pr.debtFree)) + ".";
+    } else {
+      note.className = "fc-note";
+      note.textContent = "";
+    }
+    renderForecastChart(pr);
+  }
+
+  function renderForecastChart(pr) {
+    var el = document.getElementById("forecastChart");
+    var pts = pr.pts;
+    var nets = pts.map(function (p) { return p.net; });
+    var cards = pts.map(function (p) { return p.card; });
+    var maxV = Math.max.apply(null, nets.concat(cards).concat([0]));
+    var minV = Math.min.apply(null, nets.concat([0]));
+    if (maxV === minV) { maxV += 1; minV -= 1; }
+    var span = maxV - minV;
+    var W = 320, H = 170, padL = 6, padR = 46, padT = 14, padB = 22;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = pts.length;
+    var x = function (i) { return padL + innerW * i / (n - 1); };
+    var y = function (v) { return padT + innerH * (1 - (v - minV) / span); };
+    var grid = css("--hairline"), muted = css("--muted");
+    var netCol = css("--good-fill"), cardCol = css("--actual");
+    var zeroY = y(0);
+
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Net worth projection">';
+    s += '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (padL + innerW) + '" y2="' + zeroY + '" stroke="' + grid + '" stroke-width="1"/>';
+    s += '<text x="' + (padL + innerW + 6) + '" y="' + (zeroY + 4) + '" font-size="10" fill="' + muted + '">$0</text>';
+
+    // debt-free marker
+    if (pr.debtFree && pr.debtFree > 0) {
+      var dx = x(pr.debtFree);
+      s += '<line x1="' + dx + '" y1="' + padT + '" x2="' + dx + '" y2="' + (padT + innerH) + '" stroke="' + grid + '" stroke-width="1" stroke-dasharray="3 3"/>';
+      s += '<text x="' + dx + '" y="' + (padT - 3) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">debt-free</text>';
+    }
+    function line(vals, col, w) {
+      var d = vals.map(function (v, i) { return (i ? "L" : "M") + x(i) + " " + y(v); }).join(" ");
+      return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+    s += line(cards, cardCol, 1.8);
+    s += line(nets, netCol, 2.4);
+    // endpoint labels
+    s += '<circle cx="' + x(n - 1) + '" cy="' + y(nets[n - 1]) + '" r="3.5" fill="' + netCol + '"/>';
+    s += '<text x="' + x(n - 1) + '" y="' + (y(nets[n - 1]) - 8) + '" font-size="10.5" font-weight="700" text-anchor="end" fill="' + netCol + '">' + signedMoney(Math.round(nets[n - 1])) + '</text>';
+    // x labels (start & end)
+    s += '<text x="' + padL + '" y="' + (H - 6) + '" font-size="9.5" fill="' + muted + '">now</text>';
+    s += '<text x="' + (padL + innerW) + '" y="' + (H - 6) + '" font-size="9.5" text-anchor="end" fill="' + muted + '">' + pr.H + ' mo</text>';
+    s += "</svg>";
+    el.innerHTML = s;
   }
 
   /* ---------- PLAN ---------- */
@@ -876,7 +1002,7 @@
     document.querySelectorAll("[data-view]").forEach(function (t) {
       t.classList.toggle("is-active", t.dataset.view === view);
     });
-    ["plan", "actual", "compare", "history", "log"].forEach(function (v) {
+    ["plan", "actual", "compare", "history", "log", "forecast"].forEach(function (v) {
       document.getElementById("view-" + v).hidden = v !== view;
     });
     document.getElementById("content").scrollTop = 0;
@@ -898,6 +1024,17 @@
     // Monthly reflection notes
     if (input.id === "reflectWell") { month().reflection.wentWell = input.value; save(); return; }
     if (input.id === "reflectImprove") { month().reflection.improve = input.value; save(); return; }
+    // Forecast inputs
+    if (input.id === "fcDebit" || input.id === "fcCard" || input.id === "fcApr" || input.id === "fcMonthly") {
+      var num = parseFloat(String(input.value).replace(/[^0-9.]/g, ""));
+      if (isNaN(num)) num = 0;
+      if (input.id === "fcDebit") state.forecast.debit = num;
+      else if (input.id === "fcCard") state.forecast.card = num;
+      else if (input.id === "fcApr") state.forecast.apr = num;
+      else { state.forecast.monthly = num; state.forecast.useNet = false; document.getElementById("fcUsePlan").classList.remove("on"); }
+      save(); renderForecastOutputs();
+      return;
+    }
     if (!input.classList.contains("name") && !input.classList.contains("amount")) return;
     var rowEl = input.closest(".row");
     if (!rowEl) return;
@@ -928,6 +1065,14 @@
     }
     // Add a log entry (main form)
     if (e.target.closest("#logAddBtn")) { addLogEntry(); return; }
+    // Forecast: horizon + use-plan-net
+    var hz = e.target.closest("[data-horizon]");
+    if (hz) { state.forecast.horizon = parseInt(hz.dataset.horizon, 10); save(); renderForecast(); return; }
+    if (e.target.closest("#fcUsePlan")) {
+      state.forecast.useNet = !state.forecast.useNet;
+      save(); renderForecast();
+      return;
+    }
     // Quick-log a purchase straight from an Actual expense row
     var quick = e.target.closest("[data-quicklog]");
     if (quick) { openEntrySheet("add", { catId: quick.dataset.quicklog }); return; }

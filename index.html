@@ -105,6 +105,32 @@
         <p class="privacy">&#128274; Every entry stays on this device and feeds its category's actual automatically.</p>
       </section>
 
+      <!-- FORECAST -->
+      <section class="view" id="view-forecast" hidden>
+        <div class="summary-strip" id="forecastSummary"></div>
+        <div class="card">
+          <div class="card-head"><h2>Projected net worth</h2><div class="legend" id="forecastLegend"></div></div>
+          <div id="forecastChart" class="chart"></div>
+          <p class="fc-note" id="forecastNote"></p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Your numbers</h2></div>
+          <div class="fc-grid">
+            <label class="fc-field"><span>Cash / debit balance</span>
+              <span class="amount-field"><span class="cur">$</span><input id="fcDebit" class="amount wide" inputmode="decimal" placeholder="0" /></span></label>
+            <label class="fc-field"><span>Credit card balance</span>
+              <span class="amount-field"><span class="cur">$</span><input id="fcCard" class="amount wide" inputmode="decimal" placeholder="0" /></span></label>
+            <label class="fc-field"><span>Card APR</span>
+              <span class="amount-field"><input id="fcApr" class="amount wide" inputmode="decimal" placeholder="0" /><span class="cur">%</span></span></label>
+            <label class="fc-field"><span>Monthly contribution</span>
+              <span class="amount-field"><span class="cur">$</span><input id="fcMonthly" class="amount wide" inputmode="decimal" placeholder="0" /></span>
+              <button class="fc-useplan" id="fcUsePlan"></button></label>
+          </div>
+          <div class="fc-horizon"><span>Show next</span><div class="seg" id="fcHorizon"></div></div>
+        </div>
+        <p class="privacy">&#128274; These numbers stay on this device. Projection is an estimate, not financial advice.</p>
+      </section>
+
       <!-- HISTORY -->
       <section class="view" id="view-history" hidden>
         <div class="summary-strip" id="historySummary"></div>
@@ -179,6 +205,7 @@
       <div class="drawer-nav">
         <button class="nav-item" data-view="history"><span class="nav-ico" data-ic="history"></span>History</button>
         <button class="nav-item" data-view="log"><span class="nav-ico" data-ic="receipt"></span>Log</button>
+        <button class="nav-item" data-view="forecast"><span class="nav-ico" data-ic="trending"></span>Forecast</button>
       </div>
       <div class="drawer-sep"></div>
       <button class="nav-item small" data-action="settings"><span class="nav-ico" data-ic="settings"></span>Settings</button>
