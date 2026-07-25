@@ -347,37 +347,44 @@
           </ul>
         </div>
 
-        <form class="contact-form" action="https://formsubmit.co/BrownForgeIT@gmail.com" method="POST">
-          <!-- FormSubmit settings -->
-          <input type="hidden" name="_subject" value="New message from brownforgeit.com" />
-          <input type="hidden" name="_template" value="table" />
-          <input type="hidden" name="_captcha" value="false" />
-          <input type="hidden" name="_next" value="https://brownforgeit.com/thanks.html" />
-          <input type="text" name="_honey" tabindex="-1" autocomplete="off" style="display:none" aria-hidden="true" />
+        <div class="contact-form-wrap">
+          <form class="contact-form" id="contactForm" action="https://formspree.io/f/mnjeolee" method="POST">
+            <!-- Formspree settings -->
+            <input type="hidden" name="_subject" value="New message from brownforgeit.com" />
+            <input type="hidden" name="_next" value="https://brownforgeit.com/thanks.html" />
+            <!-- honeypot: bots fill this, humans never see it -->
+            <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" style="display:none" aria-hidden="true" />
 
-          <div class="field">
-            <label for="cf-name">Name</label>
-            <input id="cf-name" name="name" type="text" required placeholder="Your name" />
+            <div class="field">
+              <label for="cf-name">Name</label>
+              <input id="cf-name" name="name" type="text" required placeholder="Your name" />
+            </div>
+            <div class="field">
+              <label for="cf-email">Email</label>
+              <input id="cf-email" name="email" type="email" required placeholder="you@example.com" />
+            </div>
+            <div class="field">
+              <label for="cf-topic">What do you need?</label>
+              <select id="cf-topic" name="topic">
+                <option>Custom PC build</option>
+                <option>Phone repair</option>
+                <option>Diagnostics &amp; advice</option>
+                <option>Something else</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="cf-msg">Message</label>
+              <textarea id="cf-msg" name="message" rows="4" required placeholder="Tell me what&rsquo;s going on…"></textarea>
+            </div>
+            <p class="form-error" id="formError" role="alert" hidden></p>
+            <button type="submit" class="btn btn-primary">Send message</button>
+          </form>
+          <div class="form-success" id="formSuccess" hidden>
+            <span class="c-ico" aria-hidden="true" style="margin:0 auto 14px"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/></svg></span>
+            <h3>Message sent &mdash; thank you!</h3>
+            <p>Thanks for reaching out. I&rsquo;ll get back to you at the email you provided as soon as I can.</p>
           </div>
-          <div class="field">
-            <label for="cf-email">Email</label>
-            <input id="cf-email" name="email" type="email" required placeholder="you@example.com" />
-          </div>
-          <div class="field">
-            <label for="cf-topic">What do you need?</label>
-            <select id="cf-topic" name="topic">
-              <option>Custom PC build</option>
-              <option>Phone repair</option>
-              <option>Diagnostics &amp; advice</option>
-              <option>Something else</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cf-msg">Message</label>
-            <textarea id="cf-msg" name="message" rows="4" required placeholder="Tell me what&rsquo;s going on…"></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary">Send message</button>
-        </form>
+        </div>
       </div>
     </section>
   </main>
