@@ -1,37 +1,27 @@
 /* =================================================================
    Theme tokens — edit these to rebrand the whole site at once.
-   Light by default; dark applied automatically via prefers-color-scheme.
+   Bold & dark: committed dark theme with one crisp accent.
    ================================================================= */
 :root {
-  --accent: #0ea5e9;          /* primary brand color */
-  --accent-strong: #0284c7;
+  --accent: #4f8dff;          /* crisp blue accent (on accent = white ink) */
+  --accent-strong: #85acff;   /* lighter accent for text/links on dark */
   --accent-ink: #ffffff;      /* text on accent */
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
 
-  --bg: #ffffff;
-  --bg-alt: #f4f7fb;
-  --surface: #ffffff;
-  --border: #e4e9f0;
+  --bg: #0a0e16;              /* near-black navy */
+  --bg-alt: #0e1420;         /* subtly lifted band */
+  --surface: #121a28;        /* cards */
+  --surface-2: #18212f;      /* subtle tiles */
+  --border: #222d3f;
 
-  --text: #10151c;
-  --text-soft: #55606e;
+  --text: #eef2f8;
+  --text-soft: #93a1b6;
 
   --radius: 14px;
   --radius-lg: 20px;
-  --shadow: 0 6px 24px rgba(16, 30, 54, 0.08);
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
   --maxw: 1080px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1220;
-    --bg-alt: #0f1a2e;
-    --surface: #121c2e;
-    --border: #22304a;
-    --text: #eaf0f8;
-    --text-soft: #9fb0c6;
-    --shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  }
 }
 
 /* ---------- base ---------- */
@@ -45,9 +35,12 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; letter-spacing: -0.02em; }
+h1, h2, h3 { line-height: 1.1; margin: 0 0 .5em; letter-spacing: -0.03em; font-weight: 800; }
 p { margin: 0 0 1em; }
 a { color: inherit; text-decoration: none; }
+
+/* consistent inline line-icons (stroke inherits text color) */
+.ico { width: 24px; height: 24px; display: block; stroke-width: 1.75; }
 code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   background: var(--bg-alt);
@@ -79,7 +72,7 @@ code {
   place-items: center;
   width: 34px; height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background: var(--accent);
   flex: none;
 }
 .brand-mark svg { width: 22px; height: 22px; display: block; }
@@ -127,13 +120,13 @@ code {
 .hero::before {
   content: "";
   position: absolute;
-  inset: -20% -10% auto -10%;
-  height: 520px;
+  inset: -30% -10% auto 20%;
+  height: 560px;
   background:
-    radial-gradient(60% 60% at 20% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
-    radial-gradient(50% 50% at 85% 10%, color-mix(in srgb, var(--accent-strong) 18%, transparent), transparent 70%);
+    radial-gradient(45% 55% at 75% 15%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
   z-index: -1;
-  filter: blur(4px);
+  filter: blur(20px);
+  opacity: .8;
 }
 .eyebrow {
   display: inline-block;
@@ -178,7 +171,7 @@ code {
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow:
-    0 18px 50px rgba(14, 165, 233, 0.20),
+    0 24px 70px rgba(79, 141, 255, 0.16),
     var(--shadow);
   aspect-ratio: 1 / 1;
 }
@@ -203,7 +196,7 @@ code {
   border: 1px solid transparent;
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px rgba(79, 141, 255, 0.28); }
 .btn-primary:hover { background: var(--accent-strong); }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
 .btn-ghost:hover { background: var(--bg-alt); }
@@ -264,7 +257,13 @@ code {
   transition: transform .15s ease, box-shadow .15s;
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
-.card-ico { font-size: 1.8rem; margin-bottom: 12px; }
+.card-ico {
+  display: inline-grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--accent-soft); color: var(--accent-strong);
+  margin-bottom: 16px;
+}
+.card-ico .ico { width: 24px; height: 24px; }
 .card h3 { font-size: 1.15rem; }
 .card p { color: var(--text-soft); margin: 0; font-size: .96rem; }
 .card .card-note {
@@ -289,7 +288,12 @@ a.card:hover .card-link { text-decoration: underline; }
   display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px 24px;
 }
 .trust-bar li { display: flex; align-items: center; gap: 12px; }
-.trust-ico { font-size: 1.5rem; flex: none; }
+.trust-ico {
+  flex: none; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.trust-ico .ico { width: 22px; height: 22px; }
 .trust-bar strong { display: block; font-size: .98rem; }
 .trust-bar li span { color: var(--text-soft); font-size: .85rem; }
 
@@ -301,9 +305,10 @@ a.card:hover .card-link { text-decoration: underline; }
 .svc-ico {
   flex: none; display: grid; place-items: center;
   width: 60px; height: 60px; border-radius: 16px;
-  font-size: 1.8rem;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
 }
+.svc-ico .ico { width: 28px; height: 28px; }
 .svc-hero-head h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); margin-bottom: .2em; }
 .svc-hero-head .lede { max-width: 52ch; }
 .svc-hero .hero-actions { margin-top: 26px; }
@@ -323,8 +328,8 @@ a.card:hover .card-link { text-decoration: underline; }
 .step-n {
   flex: none; display: grid; place-items: center;
   width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #fff; font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-ink); font-weight: 700;
 }
 .steps h3 { font-size: 1.05rem; margin: 3px 0 3px; }
 .steps p { color: var(--text-soft); margin: 0; max-width: 60ch; }
@@ -397,12 +402,10 @@ a.card:hover .card-link { text-decoration: underline; }
   aspect-ratio: 16 / 10;
   display: grid;
   place-items: center;
-  font-size: 2.4rem;
-  font-weight: 800;
-  color: var(--accent-ink);
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  letter-spacing: .05em;
+  color: var(--text-soft);
+  background: var(--surface-2);
 }
+.project-thumb .ico { width: 46px; height: 46px; opacity: .55; }
 .project-thumb.has-img { background: none; }
 .project-thumb img {
   position: absolute;
