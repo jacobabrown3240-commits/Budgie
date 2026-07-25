@@ -148,7 +148,7 @@ code {
   gap: clamp(32px, 5vw, 56px);
   align-items: center;
 }
-.hero h1 { font-size: clamp(2.1rem, 6vw, 3.7rem); margin-bottom: .35em; }
+.hero h1 { font-size: clamp(1.9rem, 5vw, 3.1rem); margin-bottom: .35em; }
 .lede {
   font-size: clamp(1.05rem, 2.4vw, 1.25rem);
   color: var(--text-soft);
