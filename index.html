@@ -222,6 +222,7 @@
       <button class="nav-item small" data-action="export"><span class="nav-ico" data-ic="download"></span>Export backup (JSON)</button>
       <button class="nav-item small" data-action="exportCsv"><span class="nav-ico" data-ic="receipt"></span>Export week (CSV)</button>
       <button class="nav-item small" data-action="import"><span class="nav-ico" data-ic="upload"></span>Import backup</button>
+      <button class="nav-item small" data-action="importCsv"><span class="nav-ico" data-ic="cart"></span>Import transactions (CSV)</button>
       <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico" data-ic="trash"></span>Clear this week</button>
     </nav>
   </div>
@@ -268,6 +269,33 @@
       <button class="sheet-item sheet-close">Close</button>
     </div>
   </div>
+
+  <!-- Import transactions sheet -->
+  <div class="sheet-backdrop" id="importSheet" hidden>
+    <div class="sheet sheet-tall" role="dialog" aria-label="Import transactions">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Import transactions</div>
+      <p class="imp-help">Paste rows from your bank or card statement (CSV), or choose a file. Each row needs a <b>date</b>, an <b>amount</b>, and a <b>description</b> &mdash; columns can be in any order. A category column is used if present. Each purchase drops into its Monday&ndash;Sunday week automatically.</p>
+      <textarea class="imp-paste" id="importPaste" rows="4" placeholder="date, amount, description, category
+08/14/2026, -80.56, AMAZON.COM, General Merchandise
+08/15/2026, -9.17, MADCAP COFFEE, Dining"></textarea>
+      <div class="imp-actions">
+        <button class="imp-file-btn" id="importFileBtn"><span class="nav-ico" data-ic="upload"></span>Choose CSV file</button>
+        <button class="imp-parse-btn" id="importParseBtn">Preview</button>
+      </div>
+      <div class="imp-opt">
+        <span>Money spent shows as</span>
+        <div class="seg" id="importSign">
+          <button class="seg-btn on" data-sign="neg">Negative &minus;</button>
+          <button class="seg-btn" data-sign="pos">Positive +</button>
+        </div>
+      </div>
+      <div id="importPreview" class="imp-preview" hidden></div>
+      <button class="log-add-btn" id="importConfirm" hidden>Import</button>
+      <button class="sheet-item sheet-close">Close</button>
+    </div>
+  </div>
+  <input type="file" id="importCsvFile" accept=".csv,text/csv,text/plain" hidden />
 
   <!-- PIN lock overlay -->
   <div class="lock" id="lockScreen" hidden>
