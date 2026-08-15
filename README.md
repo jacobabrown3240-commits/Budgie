@@ -1,8 +1,8 @@
 # Kakeibo
 
 A phone-first budgeting app, named after the traditional Japanese household
-budgeting ledger (家計簿). Plan your monthly budget, log what actually happened
-at month's end, and see the two side by side.
+budgeting ledger (家計簿). Plan your **weekly** budget (weeks start Monday), log
+what actually happened, compare, and reflect on the month's weeks.
 
 > The app is **Kakeibo**; the repository and its GitHub Pages URL remain under
 > `Budgie` (`…github.io/Budgie/`), so existing links keep working.
@@ -14,7 +14,7 @@ your phone's home screen and use it fully offline like a native app.
 ## What it does
 
 - **Plan** — set up income sources and expense categories with the amounts you
-  *expect* for the month. See planned income, expenses, and what's left to save,
+  *expect* for the week. See planned income, expenses, and what's left to save,
   plus a donut chart of where the money is going.
 - **Actual** — at the end of the month, type in what actually came in and went
   out. Each row shows the planned amount for reference.
