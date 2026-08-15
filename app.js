@@ -8,25 +8,21 @@
   var STORAGE_KEY = "budgie.v1";
   var SERIES = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
 
-  /* ---------- Defaults for a fresh month ---------- */
-  function defaultMonth() {
+  /* ---------- Defaults for a fresh week ---------- */
+  function defaultWeek() {
     return {
       income: [
-        row("Paycheck", 0),
-        row("Other income", 0)
+        row("Pay", 0)
       ],
       expenses: [
-        row("Rent / Mortgage", 0),
         row("Groceries", 0),
         row("Transport", 0),
-        row("Utilities", 0),
         row("Dining out", 0),
-        row("Subscriptions", 0),
-        row("Savings", 0),
+        row("Household", 0),
+        row("Fun", 0),
         row("Other", 0)
       ],
-      log: [],
-      reflection: { wentWell: "", improve: "" }
+      log: []
     };
   }
   function row(name, planned, icon) {
@@ -173,13 +169,16 @@
 
   /* ---------- State ---------- */
   var state = load();
-  if (!state.months) state.months = {};
+  if (!state.months) state.months = {};        // legacy monthly data — preserved, not deleted
+  if (!state.weeks) state.weeks = {};
+  if (!state.reflections) state.reflections = {};
   if (!state.settings) state.settings = {};
   if (!state.settings.theme) state.settings.theme = "dark"; // dark by default
   if (typeof state.settings.pin === "undefined") state.settings.pin = null;
   if (!state.forecast) state.forecast = { debit: 0, card: 0, apr: 22, monthly: 0, useNet: true, horizon: 12 };
-  if (!state.selected) state.selected = monthKey(new Date());
-  ensureMonth(state.selected);
+  // selected key is now a week (Monday date). Migrate an old month key if present.
+  if (!state.selected || !isWeekKey(state.selected)) state.selected = weekKey(new Date());
+  ensureWeek(state.selected);
 
   var currentView = "plan";
 
@@ -191,39 +190,54 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     catch (e) { /* storage full / private mode — ignore */ }
   }
-  // Create a month if missing: seed a fresh month from the most recent prior
-  // month's plan (names/amounts/icons/groups, actuals cleared) so recurring
-  // budgets carry forward automatically. Falls back to the default template.
-  function ensureMonth(key) {
-    if (state.months[key]) { normalizeMonth(state.months[key]); return state.months[key]; }
-    var prevKey = mostRecentBefore(key);
+  // Create a week if missing: seed from the most recent prior week's plan so a
+  // recurring budget carries forward. If there are no prior weeks but legacy
+  // monthly data exists, seed from the latest month (amounts scaled to weekly).
+  function ensureWeek(key) {
+    if (state.weeks[key]) { normalizeWeek(state.weeks[key]); return state.weeks[key]; }
+    var prevKey = mostRecentBefore(state.weeks, key);
     if (prevKey) {
-      var prev = state.months[prevKey];
-      state.months[key] = {
-        income: prev.income.map(function (r) { return carry(r); }),
-        expenses: prev.expenses.map(function (r) { return carry(r); }),
-        log: [],
-        reflection: { wentWell: "", improve: "" }
-      };
+      var prev = state.weeks[prevKey];
+      state.weeks[key] = { income: prev.income.map(carry), expenses: prev.expenses.map(carry), log: [] };
     } else {
-      state.months[key] = defaultMonth();
+      var seeded = latestMonthAsWeek();
+      state.weeks[key] = seeded || defaultWeek();
     }
-    return state.months[key];
+    return state.weeks[key];
   }
   function carry(r) {
     return { id: uid(), name: r.name, planned: r.planned, actual: null, icon: r.icon || null, group: r.group || null };
   }
-  function mostRecentBefore(key) {
-    var keys = Object.keys(state.months).filter(function (k) { return k < key; }).sort();
+  // Convert the most recent legacy month's plan into a weekly starting point
+  // (monthly amounts ÷ 4.33). Returns null if there is no legacy data.
+  var _migratedFrom = null;
+  function latestMonthAsWeek() {
+    var mk = Object.keys(state.months).sort();
+    for (var i = mk.length - 1; i >= 0; i--) {
+      var m = state.months[mk[i]];
+      if (m && ((m.income && m.income.length) || (m.expenses && m.expenses.length))) {
+        _migratedFrom = mk[i];
+        return {
+          income: (m.income || []).map(scaleWeekly),
+          expenses: (m.expenses || []).map(scaleWeekly),
+          log: []
+        };
+      }
+    }
+    return null;
+  }
+  function scaleWeekly(r) {
+    return { id: uid(), name: r.name, planned: Math.round((Number(r.planned) || 0) / 4.33),
+             actual: null, icon: r.icon || null, group: r.group || null };
+  }
+  function mostRecentBefore(store, key) {
+    var keys = Object.keys(store).filter(function (k) { return k < key; }).sort();
     return keys.length ? keys[keys.length - 1] : null;
   }
-  function normalizeMonth(m) {
-    if (!m.log) m.log = [];
-    if (!m.reflection) m.reflection = { wentWell: "", improve: "" };
-  }
-  function month() { return ensureMonth(state.selected); }
+  function normalizeWeek(m) { if (!m.log) m.log = []; }
+  function wk() { return ensureWeek(state.selected); }
 
-  /* ---------- Date helpers ---------- */
+  /* ---------- Date helpers (months, for reflections) ---------- */
   function monthKey(d) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   }
@@ -239,6 +253,47 @@
     var d = keyToDate(key);
     d.setMonth(d.getMonth() + delta);
     return monthKey(d);
+  }
+
+  /* ---------- Week helpers (Monday-based; the app's primary axis) ---------- */
+  function isoDate(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function mondayOf(d) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var day = x.getDay(); // 0=Sun .. 6=Sat
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    return x;
+  }
+  function weekKey(d) { return isoDate(mondayOf(d)); }
+  function isWeekKey(k) { return /^\d{4}-\d{2}-\d{2}$/.test(k); }
+  function keyToWeekDate(key) {
+    var p = key.split("-");
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  }
+  function shiftWeek(key, delta) {
+    var d = keyToWeekDate(key);
+    d.setDate(d.getDate() + delta * 7);
+    return isoDate(d);
+  }
+  function weekLabel(key) {
+    var mon = keyToWeekDate(key);
+    var sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    var a = mon.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    var b = (mon.getMonth() === sun.getMonth())
+      ? String(sun.getDate())
+      : sun.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return a + " – " + b;
+  }
+  function weekShort(key) {
+    return keyToWeekDate(key).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  // The calendar month a week belongs to (by its Monday).
+  function monthOfWeek(key) { return monthKey(keyToWeekDate(key)); }
+  function curReflection() {
+    var mk = monthOfWeek(state.selected);
+    if (!state.reflections[mk]) state.reflections[mk] = { wentWell: "", improve: "" };
+    return state.reflections[mk];
   }
 
   /* ---------- Money helpers ---------- */
@@ -284,25 +339,28 @@
      RENDERING
      ============================================================ */
   function render() {
-    document.getElementById("monthText").textContent = monthName(state.selected);
+    document.getElementById("monthText").textContent = weekLabel(state.selected);
     renderPlan();
     renderActual();
     renderCompare();
     renderHistory();
     renderLog();
     renderForecast();
+    renderReflectionView();
   }
 
   /* ============================================================
      FORECAST — project cash, card debt and net worth forward
      ============================================================ */
   function planNet() {
-    var m = month();
+    var m = wk();
     return sum(m.income, "planned") - sum(m.expenses, "planned");
   }
+  function weeklyToMonthly(n) { return n * 52 / 12; }
   function computeProjection() {
     var f = state.forecast;
-    var monthly = f.useNet ? planNet() : (Number(f.monthly) || 0);
+    // planNet() is a weekly figure; the projection runs in months.
+    var monthly = f.useNet ? weeklyToMonthly(planNet()) : (Number(f.monthly) || 0);
     var debit = Number(f.debit) || 0;
     var card = Number(f.card) || 0;
     var apr = Number(f.apr) || 0;
@@ -332,7 +390,7 @@
     setVal("fcApr", f.apr);
     setVal("fcMonthly", f.useNet ? "" : f.monthly);
     var planBtn = document.getElementById("fcUsePlan");
-    planBtn.textContent = "Use plan net (" + signedMoney(Math.round(planNet())) + ")";
+    planBtn.textContent = "Use plan net (" + signedMoney(Math.round(weeklyToMonthly(planNet()))) + "/mo)";
     planBtn.classList.toggle("on", !!f.useNet);
     document.getElementById("fcHorizon").innerHTML = [6, 12, 24].map(function (h) {
       return '<button class="seg-btn' + (f.horizon === h ? " on" : "") + '" data-horizon="' + h + '">' + h + " mo</button>";
@@ -364,7 +422,7 @@
       note.textContent = "⚠ Your monthly contribution doesn't cover the card's interest, so the debt keeps growing. Increase it to make progress.";
     } else if (pr.debtFree && pr.debtFree > 0) {
       note.className = "fc-note";
-      note.textContent = "At this rate your card is paid off around " + monthName(shiftMonth(state.selected, pr.debtFree)) + ".";
+      note.textContent = "At this rate your card is paid off around " + monthName(shiftMonth(monthKey(new Date()), pr.debtFree)) + ".";
     } else {
       note.className = "fc-note";
       note.textContent = "";
@@ -418,7 +476,7 @@
 
   /* ---------- PLAN ---------- */
   function renderPlan() {
-    var m = month();
+    var m = wk();
     var income = sum(m.income, "planned");
     var expenses = sum(m.expenses, "planned");
     var left = income - expenses;
@@ -440,7 +498,7 @@
 
   /* ---------- ACTUAL ---------- */
   function renderActual() {
-    var m = month();
+    var m = wk();
     var incomeActual = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
     var expenseActual = sumExpenseActual(m);
     var left = incomeActual - expenseActual;
@@ -458,7 +516,7 @@
 
   /* ---------- COMPARE ---------- */
   function renderCompare() {
-    var m = month();
+    var m = wk();
     var pIncome = sum(m.income, "planned");
     var aIncome = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
     var pExp = sum(m.expenses, "planned");
@@ -484,7 +542,6 @@
 
     renderCompareChart(m);
     renderCompareTable(m);
-    renderReflection(m, aIncome, aExp);
   }
 
   function deltaLabel(delta, higherIsGood) {
@@ -579,8 +636,8 @@
       var vsLast = "";
       if (prev != null) {
         var d2 = Math.round(a - prev);
-        if (d2 === 0) vsLast = '<span class="cmp-vs">— same as last month</span>';
-        else vsLast = '<span class="cmp-vs ' + (d2 > 0 ? "up" : "down") + '">' + (d2 > 0 ? "▲ " : "▼ ") + money(Math.abs(d2)) + ' vs last mo</span>';
+        if (d2 === 0) vsLast = '<span class="cmp-vs">— same as last week</span>';
+        else vsLast = '<span class="cmp-vs ' + (d2 > 0 ? "up" : "down") + '">' + (d2 > 0 ? "▲ " : "▼ ") + money(Math.abs(d2)) + ' vs last wk</span>';
       }
       return '' +
         '<div class="cmp-row">' +
@@ -622,8 +679,8 @@
   }
 
   function renderHistory() {
-    var keys = Object.keys(state.months).filter(function (k) { return hasData(state.months[k]); });
-    keys.sort(); // ascending by "YYYY-MM"
+    var keys = Object.keys(state.weeks).filter(function (k) { return hasData(state.weeks[k]); });
+    keys.sort(); // ascending by "YYYY-MM-DD"
 
     var sumEl = document.getElementById("historySummary");
     var chartEl = document.getElementById("historyChart");
@@ -633,29 +690,29 @@
     if (!keys.length) {
       sumEl.innerHTML = "";
       subEl.textContent = "";
-      chartEl.innerHTML = emptyMsg("Once you plan and track a month, your history builds here.");
+      chartEl.innerHTML = emptyMsg("Once you plan and track a week, your history builds here.");
       listEl.innerHTML = "";
       document.getElementById("catTrendCard").hidden = true;
       return;
     }
     renderCatTrend(keys);
 
-    var logged = keys.filter(function (k) { return monthTotals(state.months[k]).hasActual; });
-    var totalSaved = logged.reduce(function (t, k) { return t + monthTotals(state.months[k]).net; }, 0);
+    var logged = keys.filter(function (k) { return monthTotals(state.weeks[k]).hasActual; });
+    var totalSaved = logged.reduce(function (t, k) { return t + monthTotals(state.weeks[k]).net; }, 0);
     var avg = logged.length ? totalSaved / logged.length : 0;
 
     sumEl.innerHTML =
-      stat("Months tracked", String(keys.length)) +
+      stat("Weeks tracked", String(keys.length)) +
       stat("Total saved", signedMoney(totalSaved)) +
-      statAccent("Avg / month", signedMoney(Math.round(avg)));
+      statAccent("Avg / week", signedMoney(Math.round(avg)));
 
-    subEl.textContent = logged.length ? logged.length + " month" + (logged.length > 1 ? "s" : "") + " logged" : "planned only";
+    subEl.textContent = logged.length ? logged.length + " week" + (logged.length > 1 ? "s" : "") + " logged" : "planned only";
     renderTrend(chartEl, keys);
 
-    // Month list, most recent first.
+    // Week list, most recent first.
     var desc = keys.slice().reverse();
     listEl.innerHTML = desc.map(function (k) {
-      var t = monthTotals(state.months[k]);
+      var t = monthTotals(state.weeks[k]);
       var cls = t.net >= 0 ? "good" : "over";
       var tag = t.hasActual ? "" : '<span class="hist-tag">planned</span>';
       var barMax = Math.max(t.income, t.spent, 1);
@@ -663,7 +720,7 @@
         '<button class="hist-row" data-gomonth="' + k + '">' +
           '<div class="hist-main">' +
             '<div class="hist-top">' +
-              '<span class="hist-month">' + monthName(k) + tag + '</span>' +
+              '<span class="hist-month">' + weekLabel(k) + tag + '</span>' +
               '<span class="hist-net ' + cls + '">' + signedMoney(t.net) + '</span>' +
             '</div>' +
             '<div class="hist-bars">' +
@@ -679,12 +736,12 @@
 
   // Net-savings-over-time line chart (single series, zero baseline).
   function renderTrend(el, keys) {
-    var pts = keys.map(function (k) { return { k: k, net: monthTotals(state.months[k]).net }; });
+    var pts = keys.map(function (k) { return { k: k, net: monthTotals(state.weeks[k]).net }; });
     if (pts.length < 2) {
-      // A single month: show its net as a simple figure rather than a 1-point line.
+      // A single week: show its net as a simple figure rather than a 1-point line.
       var only = pts[0];
       el.innerHTML = '<div class="trend-single ' + (only.net >= 0 ? "good" : "over") + '">' +
-        signedMoney(only.net) + '<span>net in ' + monthName(only.k) + '</span></div>';
+        signedMoney(only.net) + '<span>net · week of ' + weekShort(only.k) + '</span></div>';
       return;
     }
 
@@ -717,7 +774,7 @@
       s += '<circle cx="' + x(i) + '" cy="' + y(p.net) + '" r="4" fill="' + col + '" stroke="' + css("--surface") + '" stroke-width="1.5"/>';
       // label only the endpoints to avoid clutter
       if (i === 0 || i === pts.length - 1) {
-        var lbl = keyToDate(p.k).toLocaleDateString(undefined, { month: "short" });
+        var lbl = weekShort(p.k);
         var anchor = i === 0 ? "start" : "end";
         s += '<text x="' + x(i) + '" y="' + (H - 6) + '" font-size="10" text-anchor="' + anchor + '" fill="' + muted + '">' + lbl + '</text>';
       }
@@ -733,7 +790,7 @@
      LOG (running tracker for variable expenses)
      ============================================================ */
   function renderLog() {
-    var m = month();
+    var m = wk();
     var log = monthLog(m);
     var entries = log.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
 
@@ -808,7 +865,7 @@
   }
 
   function addLogEntry() {
-    var m = month();
+    var m = wk();
     var sel = document.getElementById("logCat");
     var amtInput = document.getElementById("logAmount");
     var noteInput = document.getElementById("logNote");
@@ -913,7 +970,7 @@
   function actualRow(r, type, i) {
     var color = rowColor(type, i);
     var planned = Number(r.planned) || 0;
-    var m = month();
+    var m = wk();
     var tracked = type === "expense" && isTracked(m, r);
     var amountCell;
     var sub = 'planned ' + money(planned);
@@ -1002,7 +1059,7 @@
     document.querySelectorAll("[data-view]").forEach(function (t) {
       t.classList.toggle("is-active", t.dataset.view === view);
     });
-    ["plan", "actual", "compare", "history", "log", "forecast"].forEach(function (v) {
+    ["plan", "actual", "compare", "history", "log", "forecast", "reflection"].forEach(function (v) {
       document.getElementById("view-" + v).hidden = v !== view;
     });
     document.getElementById("content").scrollTop = 0;
@@ -1010,11 +1067,11 @@
   }
 
   // Month navigation
-  document.getElementById("prevMonth").addEventListener("click", function () { changeMonth(-1); });
-  document.getElementById("nextMonth").addEventListener("click", function () { changeMonth(1); });
-  function changeMonth(delta) {
-    state.selected = shiftMonth(state.selected, delta);
-    ensureMonth(state.selected);
+  document.getElementById("prevMonth").addEventListener("click", function () { changeWeek(-1); });
+  document.getElementById("nextMonth").addEventListener("click", function () { changeWeek(1); });
+  function changeWeek(delta) {
+    state.selected = shiftWeek(state.selected, delta);
+    ensureWeek(state.selected);
     save(); render();
   }
 
@@ -1022,8 +1079,8 @@
   document.getElementById("content").addEventListener("input", function (e) {
     var input = e.target;
     // Monthly reflection notes
-    if (input.id === "reflectWell") { month().reflection.wentWell = input.value; save(); return; }
-    if (input.id === "reflectImprove") { month().reflection.improve = input.value; save(); return; }
+    if (input.id === "reflectWell") { curReflection().wentWell = input.value; save(); return; }
+    if (input.id === "reflectImprove") { curReflection().improve = input.value; save(); return; }
     // Forecast inputs
     if (input.id === "fcDebit" || input.id === "fcCard" || input.id === "fcApr" || input.id === "fcMonthly") {
       var num = parseFloat(String(input.value).replace(/[^0-9.]/g, ""));
@@ -1040,7 +1097,7 @@
     if (!rowEl) return;
     var type = rowEl.dataset.type;
     var i = parseInt(rowEl.dataset.i, 10);
-    var list = type === "income" ? month().income : month().expenses;
+    var list = type === "income" ? wk().income : wk().expenses;
     var rec = list[i];
     if (!rec) return;
     var field = input.dataset.field;
@@ -1085,7 +1142,7 @@
     var go = e.target.closest("[data-gomonth]");
     if (go) {
       state.selected = go.dataset.gomonth;
-      ensureMonth(state.selected);
+      ensureWeek(state.selected);
       save();
       switchView("compare");
       render();
@@ -1096,7 +1153,7 @@
       var rowEl = del.closest(".row");
       var type = rowEl.dataset.type;
       var i = parseInt(rowEl.dataset.i, 10);
-      var list = type === "income" ? month().income : month().expenses;
+      var list = type === "income" ? wk().income : wk().expenses;
       list.splice(i, 1);
       save(); render();
       return;
@@ -1104,8 +1161,8 @@
     var add = e.target.closest("[data-add]");
     if (add) {
       var t = add.dataset.add;
-      if (t === "income") month().income.push(row("New income", 0));
-      else month().expenses.push(row("New category", 0));
+      if (t === "income") wk().income.push(row("New income", 0));
+      else wk().expenses.push(row("New category", 0));
       save(); render();
     }
   });
@@ -1153,10 +1210,10 @@
     var type = drag.row.dataset.type;
     var order = Array.prototype.slice.call(listEl.querySelectorAll(".row"))
       .map(function (r) { return parseInt(r.dataset.i, 10); });
-    var arr = type === "income" ? month().income : month().expenses;
+    var arr = type === "income" ? wk().income : wk().expenses;
     var reordered = order.map(function (idx) { return arr[idx]; });
-    if (type === "income") month().income = reordered;
-    else month().expenses = reordered;
+    if (type === "income") wk().income = reordered;
+    else wk().expenses = reordered;
     drag.row.classList.remove("dragging");
     document.body.classList.remove("is-dragging");
     drag = null;
@@ -1173,7 +1230,7 @@
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(function () {
       if (currentView === "plan") {
-        var m = month();
+        var m = wk();
         var income = sum(m.income, "planned"), expenses = sum(m.expenses, "planned"), left = income - expenses;
         document.getElementById("planSummary").innerHTML =
           stat("Planned income", money(income)) + stat("Planned expenses", money(expenses)) +
@@ -1189,7 +1246,7 @@
   }
   // Refresh actual summary without rebuilding the input list
   function renderActual2() {
-    var m = month();
+    var m = wk();
     var incomeActual = m.income.reduce(function (t, r) { return t + actualOr(r); }, 0);
     var expenseActual = sumExpenseActual(m);
     var left = incomeActual - expenseActual;
@@ -1214,7 +1271,7 @@
 
   function currentPickRec() {
     if (!pickTarget) return null;
-    var list = pickTarget.type === "income" ? month().income : month().expenses;
+    var list = pickTarget.type === "income" ? wk().income : wk().expenses;
     return list[pickTarget.index] || null;
   }
   function renderGroupPick() {
@@ -1254,19 +1311,19 @@
 
   /* ---------- Menu actions (wired from the sidebar) ---------- */
   function copyPrevious() {
-    var prevKey = shiftMonth(state.selected, -1);
-    var prev = state.months[prevKey];
-    if (!prev) { toast("No previous month to copy from."); return; }
-    month().income = prev.income.map(function (r) { return row(r.name, r.planned); });
-    month().expenses = prev.expenses.map(function (r) { return row(r.name, r.planned); });
+    var prevKey = mostRecentBefore(state.weeks, state.selected);
+    var prev = prevKey ? state.weeks[prevKey] : null;
+    if (!prev) { toast("No previous week to copy from."); return; }
+    wk().income = prev.income.map(function (r) { return row(r.name, r.planned, r.icon); });
+    wk().expenses = prev.expenses.map(function (r) { var x = row(r.name, r.planned, r.icon); x.group = r.group || null; return x; });
     save(); render();
-    toast("Copied plan from " + monthName(prevKey) + ".");
+    toast("Copied plan from week of " + weekShort(prevKey) + ".");
   }
 
   function clearMonth() {
-    state.months[state.selected] = defaultMonth();
+    state.weeks[state.selected] = defaultWeek();
     save(); render();
-    toast("Month reset.");
+    toast("Week reset.");
   }
 
   function exportData() {
@@ -1286,10 +1343,12 @@
     reader.onload = function () {
       try {
         var data = JSON.parse(reader.result);
-        if (data && data.months) {
+        if (data && (data.weeks || data.months)) {
           state = data;
-          if (!state.selected || !state.months[state.selected]) state.selected = monthKey(new Date());
-          save(); render();
+          if (!state.weeks) state.weeks = {};
+          if (!state.reflections) state.reflections = {};
+          if (!state.selected || !isWeekKey(state.selected)) state.selected = weekKey(new Date());
+          save(); location.reload();
           toast("Backup imported.");
         } else { toast("That file doesn't look like a Kakeibo backup."); }
       } catch (err) { toast("Could not read that file."); }
@@ -1420,7 +1479,7 @@
   }
   function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function exportCsv() {
-    var m = month();
+    var m = wk();
     var rows = [["Type", "Category", "Group", "Planned", "Actual"]];
     m.income.forEach(function (r) { rows.push(["Income", r.name, "", Number(r.planned) || 0, actualOr(r)]); });
     m.expenses.forEach(function (r) { rows.push(["Expense", r.name, GROUP_MAP[rowGroup(r)].label, Number(r.planned) || 0, expenseActualOf(m, r)]); });
@@ -1457,22 +1516,67 @@
     el.innerHTML = bar + '<div class="type-legend">' + legend + '</div>';
   }
 
-  /* ---------- Monthly reflection ---------- */
-  function renderReflection(m, aIncome, aExp) {
-    var net = aIncome - aExp;
+  /* ---------- Monthly reflection (visualizes the month's weeks) ---------- */
+  function weeksInMonth(mk) {
+    return Object.keys(state.weeks).filter(function (k) { return monthOfWeek(k) === mk; }).sort();
+  }
+  function renderReflectionView() {
+    var mk = monthOfWeek(state.selected);
+    document.getElementById("reflectMonth").textContent = monthName(mk);
+    var wkeys = weeksInMonth(mk);
+    var tot = wkeys.reduce(function (a, k) {
+      var t = monthTotals(state.weeks[k]);
+      a.income += t.income; a.spent += t.spent; return a;
+    }, { income: 0, spent: 0 });
+    var net = tot.income - tot.spent;
     document.getElementById("reflectionSummary").innerHTML =
-      '<span>Had <b>' + money(aIncome) + '</b></span>' +
-      '<span>Spent <b>' + money(aExp) + '</b></span>' +
-      '<span class="' + (net >= 0 ? "good" : "over") + '">Saved <b>' + signedMoney(net) + '</b></span>';
-    document.getElementById("reflectWell").value = m.reflection.wentWell || "";
-    document.getElementById("reflectImprove").value = m.reflection.improve || "";
+      stat("This month in", money(tot.income)) +
+      stat("Out", money(tot.spent)) +
+      statAccentNet(net >= 0 ? "Net saved" : "Net shortfall", signedMoney(net), wkeys.length + " week" + (wkeys.length === 1 ? "" : "s"), net >= 0);
+
+    // Bar chart: each week's net across the month.
+    var pts = wkeys.map(function (k) { return { k: k, net: monthTotals(state.weeks[k]).net }; });
+    var chartEl = document.getElementById("reflectChart");
+    if (!pts.length) chartEl.innerHTML = emptyMsg("Plan or track a week this month to see it here.");
+    else renderWeekNetBars(chartEl, pts);
+
+    var r = curReflection();
+    setTextarea("reflectWell", r.wentWell);
+    setTextarea("reflectImprove", r.improve);
+  }
+  function setTextarea(id, v) {
+    var el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = v || "";
+  }
+  function renderWeekNetBars(el, pts) {
+    var vals = pts.map(function (p) { return p.net; });
+    var maxV = Math.max.apply(null, vals.concat([0]));
+    var minV = Math.min.apply(null, vals.concat([0]));
+    if (maxV === minV) { maxV += 1; minV -= 1; }
+    var span = maxV - minV;
+    var W = 320, H = 150, padB = 26, padT = 18, n = pts.length;
+    var gap = 10, bw = Math.min(56, (W - gap * (n - 1)) / n), muted = css("--muted"), good = css("--good-fill"), over = css("--over");
+    var zeroY = padT + (H - padB - padT) * (maxV / span);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Weekly net this month">';
+    s += '<line x1="0" y1="' + zeroY + '" x2="' + W + '" y2="' + zeroY + '" stroke="' + css("--hairline") + '"/>';
+    pts.forEach(function (p, i) {
+      var x = i * (bw + gap) + 2;
+      var top = padT + (H - padB - padT) * ((maxV - Math.max(p.net, 0)) / span);
+      var bot = padT + (H - padB - padT) * ((maxV - Math.min(p.net, 0)) / span);
+      var col = p.net >= 0 ? good : over;
+      s += '<rect x="' + x + '" y="' + top + '" width="' + bw + '" height="' + Math.max(bot - top, 1) + '" rx="4" fill="' + col + '"/>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (p.net >= 0 ? top - 5 : bot + 12) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + signedMoney(Math.round(p.net)) + '</text>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (H - 8) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + weekShort(p.k) + '</text>';
+    });
+    s += "</svg>";
+    el.innerHTML = s;
   }
 
   /* ---------- Category trend (History) ---------- */
   function allCategoryNames() {
     var names = {}, order = [];
-    Object.keys(state.months).forEach(function (k) {
-      state.months[k].expenses.forEach(function (r) {
+    Object.keys(state.weeks).forEach(function (k) {
+      state.weeks[k].expenses.forEach(function (r) {
         if (!names[r.name]) { names[r.name] = true; order.push(r.name); }
       });
     });
@@ -1489,7 +1593,7 @@
     else state.catTrend = sel.value;
     var target = sel.value;
     var pts = keys.map(function (k) {
-      var m = state.months[k];
+      var m = state.weeks[k];
       var r = m.expenses.filter(function (x) { return x.name === target; })[0];
       return { k: k, val: r ? expenseActualOf(m, r) : 0 };
     });
@@ -1507,22 +1611,22 @@
       var y = H - padB - h;
       s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + color + '"/>';
       if (p.val > 0) s += '<text x="' + (x + bw / 2) + '" y="' + (y - 5) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + money(p.val) + '</text>';
-      s += '<text x="' + (x + bw / 2) + '" y="' + (H - 7) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + keyToDate(p.k).toLocaleDateString(undefined, { month: "short" }) + '</text>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (H - 7) + '" font-size="9.5" text-anchor="middle" fill="' + muted + '">' + weekShort(p.k) + '</text>';
     });
     s += "</svg>";
     el.innerHTML = s;
   }
   document.getElementById("catTrendSel").addEventListener("change", function () {
     state.catTrend = this.value; save();
-    var keys = Object.keys(state.months).filter(function (k) { return hasData(state.months[k]); }).sort();
+    var keys = Object.keys(state.weeks).filter(function (k) { return hasData(state.weeks[k]); }).sort();
     renderCatTrend(keys);
   });
 
-  /* ---------- Previous-month actual for a category (vs last month) ---------- */
+  /* ---------- Previous-week actual for a category (vs last week) ---------- */
   function prevMonthActual(catName) {
-    var prevKey = mostRecentBefore(state.selected);
+    var prevKey = mostRecentBefore(state.weeks, state.selected);
     if (!prevKey) return null;
-    var pm = state.months[prevKey];
+    var pm = state.weeks[prevKey];
     var r = pm.expenses.filter(function (x) { return x.name === catName; })[0];
     return r ? expenseActualOf(pm, r) : null;
   }
@@ -1531,7 +1635,7 @@
   var entrySheet = document.getElementById("entrySheet");
   var entryEditId = null;
   function fillEntryCats() {
-    var m = month();
+    var m = wk();
     document.getElementById("entryCat").innerHTML = m.expenses.map(function (r) {
       return '<option value="' + r.id + '">' + esc(r.name) + "</option>";
     }).join("");
@@ -1548,7 +1652,7 @@
     document.getElementById("entryDelete").hidden = mode !== "edit";
     if (mode === "edit") {
       entryEditId = opts.id;
-      var e = monthLog(month()).filter(function (x) { return x.id === opts.id; })[0];
+      var e = monthLog(wk()).filter(function (x) { return x.id === opts.id; })[0];
       if (!e) return;
       document.getElementById("entryCat").value = e.catId;
       document.getElementById("entryAmount").value = e.amount;
@@ -1568,14 +1672,14 @@
     if (e.target === entrySheet || e.target.closest(".sheet-close")) { entrySheet.hidden = true; return; }
     if (e.target.closest("#entrySave")) { saveEntry(); return; }
     if (e.target.closest("#entryDelete")) {
-      var lg = monthLog(month());
+      var lg = monthLog(wk());
       for (var i = 0; i < lg.length; i++) if (lg[i].id === entryEditId) { lg.splice(i, 1); break; }
       save(); entrySheet.hidden = true; render();
       return;
     }
   });
   function saveEntry() {
-    var m = month();
+    var m = wk();
     var catId = document.getElementById("entryCat").value;
     var amount = parseFloat(String(document.getElementById("entryAmount").value).replace(/[^0-9.]/g, ""));
     var note = document.getElementById("entryNote").value.trim();
@@ -1616,6 +1720,10 @@
   });
   maybeLock();
   render();
+  save(); // persist migrated/seeded week + default settings
+  if (_migratedFrom) {
+    setTimeout(function () { toast("Kakeibo is weekly now — seeded this week from your " + monthName(_migratedFrom) + " plan (÷ 4.3)."); }, 700);
+  }
 
   // Re-render / re-theme when the OS scheme changes (matters for "auto").
   if (window.matchMedia) {

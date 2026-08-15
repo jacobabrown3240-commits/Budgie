@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0a0c10" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Plan your monthly budget, log what actually happened, and see the difference." />
+  <meta name="description" content="Plan your weekly budget, log what actually happened, and reflect each month." />
   <title>Kakeibo</title>
 
   <link rel="manifest" href="manifest.webmanifest" />
@@ -23,11 +23,11 @@
     <header class="topbar">
       <div class="topbar-row">
         <button class="menu-btn" id="navBtn" aria-label="Open menu">&#9776;</button>
-        <button class="month-nav" id="prevMonth" aria-label="Previous month">&#8249;</button>
+        <button class="month-nav" id="prevMonth" aria-label="Previous week">&#8249;</button>
         <button class="month-label" id="monthLabel">
           <span id="monthText">Month</span>
         </button>
-        <button class="month-nav" id="nextMonth" aria-label="Next month">&#8250;</button>
+        <button class="month-nav" id="nextMonth" aria-label="Next week">&#8250;</button>
       </div>
     </header>
 
@@ -65,7 +65,7 @@
       <!-- ACTUAL -->
       <section class="view" id="view-actual" hidden>
         <div class="summary-strip" id="actualSummary"></div>
-        <p class="hint">Enter what actually came in and went out this month.</p>
+        <p class="hint">Enter what actually came in and went out this week.</p>
         <div class="card">
           <div class="card-head"><h2>Income</h2><span class="card-sub" id="actualIncomeTotal"></span></div>
           <div class="list" id="actualIncomeList"></div>
@@ -149,7 +149,7 @@
           <div id="catTrendChart" class="chart"></div>
         </div>
         <div class="card">
-          <div class="card-head"><h2>Month by month</h2></div>
+          <div class="card-head"><h2>Week by week</h2></div>
           <div id="historyList" class="hist-list"></div>
         </div>
         <p class="privacy">&#128274; Your history is stored only on this device &mdash; nothing is uploaded anywhere.</p>
@@ -170,10 +170,18 @@
           <div class="card-head"><h2>Category breakdown</h2></div>
           <div id="compareTable" class="cmp-table"></div>
         </div>
+      </section>
+
+      <!-- REFLECTION (monthly roll-up of the weeks) -->
+      <section class="view" id="view-reflection" hidden>
+        <div class="summary-strip" id="reflectionSummary"></div>
         <div class="card">
-          <div class="card-head"><h2>Monthly reflection</h2></div>
-          <div id="reflectionSummary" class="reflect-summary"></div>
-          <label class="reflect-label">What went well?</label>
+          <div class="card-head"><h2>Weeks in <span id="reflectMonth">this month</span></h2></div>
+          <div id="reflectChart" class="chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Reflection</h2></div>
+          <label class="reflect-label">What went well this month?</label>
           <textarea class="reflect-input" id="reflectWell" rows="2" placeholder="e.g. packed lunch most days"></textarea>
           <label class="reflect-label">How can you improve next month?</label>
           <textarea class="reflect-input" id="reflectImprove" rows="2" placeholder="e.g. cut a subscription"></textarea>
@@ -205,15 +213,16 @@
       <div class="drawer-nav">
         <button class="nav-item" data-view="history"><span class="nav-ico" data-ic="history"></span>History</button>
         <button class="nav-item" data-view="log"><span class="nav-ico" data-ic="receipt"></span>Log</button>
+        <button class="nav-item" data-view="reflection"><span class="nav-ico" data-ic="star"></span>Reflection</button>
         <button class="nav-item" data-view="forecast"><span class="nav-ico" data-ic="trending"></span>Forecast</button>
       </div>
       <div class="drawer-sep"></div>
       <button class="nav-item small" data-action="settings"><span class="nav-ico" data-ic="settings"></span>Settings</button>
-      <button class="nav-item small" data-action="copyPrev"><span class="nav-ico" data-ic="copy"></span>Copy last month's plan</button>
+      <button class="nav-item small" data-action="copyPrev"><span class="nav-ico" data-ic="copy"></span>Copy last week's plan</button>
       <button class="nav-item small" data-action="export"><span class="nav-ico" data-ic="download"></span>Export backup (JSON)</button>
-      <button class="nav-item small" data-action="exportCsv"><span class="nav-ico" data-ic="receipt"></span>Export month (CSV)</button>
+      <button class="nav-item small" data-action="exportCsv"><span class="nav-ico" data-ic="receipt"></span>Export week (CSV)</button>
       <button class="nav-item small" data-action="import"><span class="nav-ico" data-ic="upload"></span>Import backup</button>
-      <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico" data-ic="trash"></span>Clear this month</button>
+      <button class="nav-item small danger" data-action="clearMonth"><span class="nav-ico" data-ic="trash"></span>Clear this week</button>
     </nav>
   </div>
   <input type="file" id="importFile" accept="application/json" hidden />
