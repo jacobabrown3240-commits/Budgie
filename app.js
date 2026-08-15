@@ -1045,6 +1045,7 @@
       else if (action === "export") exportData();
       else if (action === "exportCsv") exportCsv();
       else if (action === "import") document.getElementById("importFile").click();
+      else if (action === "importCsv") openImport();
       else if (action === "clearMonth") clearMonth();
       else if (action === "settings") openSettings();
     }
@@ -1492,6 +1493,227 @@
     var csv = rows.map(function (r) { return r.map(csvCell).join(","); }).join("\n");
     downloadBlob(csv, "kakeibo-" + state.selected + ".csv", "text/csv");
   }
+
+  /* ---------- Statement / CSV import ---------- */
+  // Maps a transaction's bank category + description to one of the app's
+  // expense categories. Falls back to "Other". Reuses the everyday vocabulary
+  // banks print (e.g. "General Merchandise", "Gas and Fuel").
+  var IMPORT_CAT_RULES = [
+    [/grocer|supermarket|family fare|meijer|kroger|aldi|costco|whole foods|trader joe|safeway|publix|wegmans/i, "Groceries"],
+    [/gas and fuel|gas\/fuel|\bgas\b|\bfuel\b|mobil|shell|exxon|chevron|speedway|marathon|citgo|sunoco|\bbp\b/i, "Transport"],
+    [/uber|lyft|transit|parking|toll|metro|\btransport|car wash|auto |dmv/i, "Transport"],
+    [/coffee|starbucks|madcap|dunkin|\bcafe\b|tst\*|toast/i, "Dining out"],
+    [/restaur|dining|grubhub|doordash|uber eats|mcdonald|chipotle|pizza|taco|burger|deli|grill|kitchen|bar & /i, "Dining out"],
+    [/amazon|amzn|walmart|target|merchandise|\bstore\b|\bshop\b|best buy|ebay|etsy|clothing|apparel/i, "Shopping"],
+    [/netflix|spotify|hulu|disney|\bhbo\b|steam|teachable|entertain|\bgame\b|movie|cinema|subscription|patreon|youtube/i, "Fun"],
+    [/rent|mortgage|landlord|apartment/i, "Rent"],
+    [/electric|water|sewer|utility|internet|comcast|xfinity|verizon|at&t|t-mobile|\bphone\b|wifi|natural gas/i, "Utilities"],
+    [/health|pharmacy|cvs|walgreens|doctor|dental|medical|clinic|hospital/i, "Health"],
+    [/household|home depot|lowes|ikea|hardware|furniture/i, "Household"]
+  ];
+  function guessCatName(desc, bankCat) {
+    var s = String(bankCat || "") + " " + String(desc || "");
+    for (var i = 0; i < IMPORT_CAT_RULES.length; i++) if (IMPORT_CAT_RULES[i][0].test(s)) return IMPORT_CAT_RULES[i][1];
+    return "Other";
+  }
+
+  var importSheet = document.getElementById("importSheet");
+  var importTx = [];
+  var importSign = "neg"; // whether money spent appears as a negative or positive amount
+
+  // A tolerant CSV/TSV parser (handles quoted cells, escaped quotes, tabs).
+  function parseCsv(text) {
+    var rows = [], row = [], cell = "", q = false, i = 0, c;
+    text = String(text || "").replace(/\r\n?/g, "\n");
+    while (i < text.length) {
+      c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += c;
+      } else if (c === '"') { q = true; }
+      else if (c === "," || c === "\t") { row.push(cell); cell = ""; }
+      else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+      else cell += c;
+      i++;
+    }
+    row.push(cell); rows.push(row);
+    return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ""; }); });
+  }
+
+  function parseTxDate(s) {
+    s = String(s == null ? "" : s).trim();
+    if (!s) return null;
+    var m;
+    if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return new Date(+m[1], +m[2] - 1, +m[3]);
+    if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/))) { var y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[1] - 1, +m[2]); }
+    if ((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) return new Date(new Date().getFullYear(), +m[1] - 1, +m[2]);
+    var t = Date.parse(s); // "Aug 14, 2026", "August 14 2026", etc.
+    if (!isNaN(t)) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    return null;
+  }
+  function parseAmount(s) {
+    s = String(s == null ? "" : s).trim();
+    if (!/\d/.test(s)) return null;
+    var neg = /^\(.*\)$/.test(s) || s.indexOf("-") >= 0; // ($12.00) or -12.00 → outflow
+    var num = parseFloat(s.replace(/[^0-9.]/g, ""));
+    if (isNaN(num)) return null;
+    return neg ? -num : num;
+  }
+  function looksLikeDate(s) { return parseTxDate(s) != null; }
+  function looksLikeAmount(s) { return parseAmount(s) != null && /^[\s$(-]*\d/.test(String(s).trim()); }
+  function idxMatch(header, re) { for (var i = 0; i < header.length; i++) if (re.test(header[i])) return i; return -1; }
+
+  // Turn parsed rows into transaction objects. Uses a header row if one is
+  // present; otherwise infers date / amount / description columns by shape.
+  function buildTx(rows) {
+    if (!rows.length) return [];
+    var header = rows[0].map(function (x) { return String(x).trim().toLowerCase(); });
+    var dateI = idxMatch(header, /date|posted|time/);
+    var amtI = idxMatch(header, /amount|debit|value/);
+    if (amtI < 0) amtI = idxMatch(header, /credit/);
+    var descI = idxMatch(header, /desc|payee|merchant|name|memo|detail|transaction/);
+    var catI = idxMatch(header, /category|type/);
+    var data;
+    if (dateI >= 0 && amtI >= 0) {
+      data = rows.slice(1);
+    } else {
+      // No usable header — infer columns from the first row's shape.
+      var first = rows[0];
+      dateI = -1; amtI = -1;
+      for (var i = 0; i < first.length; i++) {
+        if (dateI < 0 && looksLikeDate(first[i])) { dateI = i; continue; }
+        if (amtI < 0 && looksLikeAmount(first[i])) { amtI = i; }
+      }
+      var best = -1, bestLen = -1;
+      for (var j = 0; j < first.length; j++) {
+        if (j === dateI || j === amtI) continue;
+        var L = String(first[j]).trim().length;
+        if (L > bestLen && !looksLikeAmount(first[j]) && !looksLikeDate(first[j])) { bestLen = L; best = j; }
+      }
+      descI = best; catI = -1; data = rows;
+    }
+    if (dateI < 0 || amtI < 0) return [];
+    var out = [];
+    data.forEach(function (r) {
+      var dt = parseTxDate(r[dateI]);
+      var amt = parseAmount(r[amtI]);
+      if (!dt || amt == null) return;
+      var desc = descI >= 0 ? String(r[descI] || "").trim() : "";
+      var bankCat = catI >= 0 ? String(r[catI] || "").trim() : "";
+      out.push({ dt: dt, amt: amt, note: desc, cat: guessCatName(desc, bankCat) });
+    });
+    return out;
+  }
+
+  function openImport() {
+    importTx = [];
+    document.getElementById("importPaste").value = "";
+    var pv = document.getElementById("importPreview");
+    pv.hidden = true; pv.innerHTML = "";
+    document.getElementById("importConfirm").hidden = true;
+    importSheet.hidden = false;
+  }
+  // Default each row to "included" when it's an outflow under the chosen sign.
+  function setImportDefaults() {
+    importTx.forEach(function (t) {
+      t.mag = Math.abs(t.amt);
+      t.include = importSign === "neg" ? t.amt < 0 : t.amt > 0;
+    });
+  }
+  function doImportParse() {
+    var rows = parseCsv(document.getElementById("importPaste").value);
+    if (!rows.length) { toast("Paste some rows (or choose a file) first."); return; }
+    importTx = buildTx(rows);
+    if (!importTx.length) { toast("Couldn't find a date and an amount. Each row needs both."); return; }
+    setImportDefaults();
+    renderImportPreview();
+  }
+  function renderImportPreview() {
+    var inc = importTx.filter(function (t) { return t.include; });
+    var total = inc.reduce(function (a, t) { return a + t.mag; }, 0);
+    var weeks = {}; inc.forEach(function (t) { weeks[weekKey(t.dt)] = true; });
+    var nW = Object.keys(weeks).length;
+    var head = '<div class="imp-sum">' + inc.length + ' of ' + importTx.length + ' selected · ' +
+      money(total) + ' · ' + nW + ' week' + (nW === 1 ? '' : 's') + '</div>';
+    var list = importTx.map(function (t, i) {
+      return '<label class="imp-row' + (t.include ? '' : ' off') + '">' +
+          '<input type="checkbox" class="imp-inc" data-impinc="' + i + '"' + (t.include ? ' checked' : '') + ' />' +
+          '<span class="imp-main">' +
+            '<span class="imp-line"><span class="imp-note">' + esc(t.note || "(no description)") + '</span>' +
+              '<span class="imp-amt">' + money(t.mag) + '</span></span>' +
+            '<span class="imp-line2">' + esc(t.dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })) +
+              ' · week of ' + esc(weekShort(weekKey(t.dt))) + '</span>' +
+            '<input class="imp-cat" data-impcat="' + i + '" value="' + esc(t.cat) + '" aria-label="Category" />' +
+          '</span>' +
+        '</label>';
+    }).join("");
+    var pv = document.getElementById("importPreview");
+    pv.innerHTML = head + list; pv.hidden = false;
+    var btn = document.getElementById("importConfirm");
+    btn.hidden = inc.length === 0;
+    btn.textContent = "Import " + inc.length + " transaction" + (inc.length === 1 ? "" : "s");
+  }
+  function findOrCreateCat(week, name) {
+    var low = String(name).toLowerCase();
+    var ex = week.expenses.filter(function (r) { return String(r.name).toLowerCase() === low; })[0];
+    if (ex) return ex;
+    var r = row(name, 0);
+    week.expenses.push(r);
+    return r;
+  }
+  function runImport() {
+    var inc = importTx.filter(function (t) { return t.include; });
+    if (!inc.length) { toast("Nothing selected to import."); return; }
+    var added = 0, weeks = {};
+    inc.forEach(function (t) {
+      var wkey = weekKey(t.dt);
+      var week = ensureWeek(wkey);
+      var name = (String(t.cat || "").trim()) || "Other";
+      var cat = findOrCreateCat(week, name);
+      monthLog(week).push({ id: uid(), catId: cat.id, amount: t.mag, note: t.note, ts: tsFromDate(isoDate(t.dt)) });
+      weeks[wkey] = true; added++;
+    });
+    save();
+    importSheet.hidden = true;
+    render();
+    var nW = Object.keys(weeks).length;
+    toast("Imported " + added + " transaction" + (added === 1 ? "" : "s") + " into " + nW + " week" + (nW === 1 ? "" : "s") + ".");
+  }
+
+  importSheet.addEventListener("click", function (e) {
+    if (e.target === importSheet || e.target.closest(".sheet-close")) { importSheet.hidden = true; return; }
+    if (e.target.closest("#importFileBtn")) { document.getElementById("importCsvFile").click(); return; }
+    if (e.target.closest("#importParseBtn")) { doImportParse(); return; }
+    if (e.target.closest("#importConfirm")) { runImport(); return; }
+    var sg = e.target.closest("[data-sign]");
+    if (sg) {
+      importSign = sg.dataset.sign;
+      Array.prototype.forEach.call(document.querySelectorAll("#importSign [data-sign]"), function (b) {
+        b.classList.toggle("on", b.dataset.sign === importSign);
+      });
+      if (importTx.length) { setImportDefaults(); renderImportPreview(); }
+    }
+  });
+  importSheet.addEventListener("change", function (e) {
+    var inc = e.target.closest("[data-impinc]");
+    if (inc) { importTx[+inc.dataset.impinc].include = inc.checked; renderImportPreview(); }
+  });
+  // Editing a category input updates state without a re-render (keeps focus).
+  importSheet.addEventListener("input", function (e) {
+    var cat = e.target.closest("[data-impcat]");
+    if (cat) importTx[+cat.dataset.impcat].cat = cat.value;
+  });
+  document.getElementById("importCsvFile").addEventListener("change", function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      document.getElementById("importPaste").value = String(reader.result || "");
+      doImportParse();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
 
   /* ---------- Kakeibo "by type" breakdown ---------- */
   function renderPlanTypes(m) {
